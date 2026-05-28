@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate,IsNumber, IsString } from 'class-validator';
+import { IsDate, IsNumber, IsString, IsNotEmpty } from 'class-validator';
 
 export class CreateJobCardDto {
     @IsString()
@@ -55,4 +55,8 @@ export class CreateJobCardDto {
 
     @IsString()
     machineNote: string
+
+    @IsString()
+    @IsNotEmpty()
+    quality: string
 }

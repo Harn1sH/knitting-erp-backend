@@ -35,6 +35,7 @@ model JobCard {
   dia             Float
   composition     String
   count           String
+  quality         String   @default("")
   rate            Float
   orderQuantity   Float
   totalYarnNeeded Float
