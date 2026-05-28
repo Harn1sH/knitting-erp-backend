@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // No url or directUrl here!
+}
+
+model Delivery {
+  id             String   @id @default(uuid())
+  jobCardId      String
+  quantityKg     Float
+  dcNo           String
+  vehicle        String
+  date           DateTime
+  numberOfRolls  Int?
+  weightPerRoll  Float?
+  companyName    String?
+  fabricName     String?
+
+  jobCard     JobCard @relation(fields: [jobCardId], references: [id])
+}
+
+model JobCard {
+  id              String   @id @default(uuid())
+  jobNumber       String   @unique
+  customerName    String
+  gsm             Float
+  dia             Float
+  composition     String
+  count           String
+  rate            Float
+  orderQuantity   Float
+  totalYarnNeeded Float
+  deliveryDate    DateTime
+  status          String
+  remarks         String
+  createdAt       DateTime @default(now())
+
+  fabricType      String
+  brand           String
+  machine         String
+  machineNote     String
+
+  yarnInwards     YarnInward[]
+  productions     Production[]
+  deliveries      Delivery[]
+}
+
+model Production {
+  id          String   @id @default(uuid())
+  jobCardId   String
+  operatorId  String?   // 👈 add this
+  machine     String
+  kgProduced  Float
+  hoursRun    Float
+  stoppage    String?
+  date        DateTime
+  jobCard     JobCard  @relation(fields: [jobCardId], references: [id])
+  operator    User?    @relation(fields: [operatorId], references: [id]) // 👈 THIS FIXES IT
+}
+
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  role        Role
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  productions Production[]
+}
+
+model YarnInward {
+  id          String   @id @default(uuid())
+  jobCardId   String
+  supplierId  String
+  yarnName    String
+  color       String
+  bags        Int
+  cones       Int
+  netWeight   Float
+  entryDate   DateTime
+  createdAt   DateTime @default(now())
+  weightPerBag Float
+  remarks String
+
+  jobCard     JobCard @relation(fields: [jobCardId], references: [id])
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model JobCardCounter {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model Supplier {
+  id            String   @id @default(cuid())
+  name          String
+  contactPerson String?
+  phoneNumber   String?
+  altPhoneNumber String?
+  email         String?
+  address       String?
+  city          String?
+  state         String?
+  pincode       String?
+
+  gstNumber     String?  @unique
+  panNumber     String?
+  bankName      String?
+  accountNumber String?
+  ifscCode      String?
+
+  remarks       String?
+
+  paymentTerms  String?  // e.g., "30 days", "Advance"
+
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  yarnInwards   YarnInward[]
+}
+
+model MasterEntry {
+  id          String   @id @default(cuid())
+  category    String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([category, name])
+}
