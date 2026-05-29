@@ -4,6 +4,8 @@ import { CreateMasterDto } from 'src/dto/master/create-master.dto';
 import { UpdateMasterDto } from 'src/dto/master/update-master.dto';
 import { CreateMasterEntryDto } from 'src/dto/master/create-master-entry.dto';
 import { UpdateMasterEntryDto } from 'src/dto/master/update-master-entry.dto';
+import { CreateClientDto } from 'src/dto/master/create-client.dto';
+import { UpdateClientDto } from 'src/dto/master/update-client.dto';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
 
 @UseGuards(JwtAuthGuard)
@@ -27,6 +29,23 @@ export class MasterController {
     @Patch("update-master/:id")
     updateMaster(@Param('id') id: string, @Body() body: UpdateMasterDto){
         return this.masterService.updateMaster(id, body)
+    }
+
+    // ── Client Masters ────────────────────────────────────────
+
+    @Post("clients")
+    createClient(@Body() body: CreateClientDto){
+        return this.masterService.createClient(body);
+    }
+
+    @Get("clients")
+    getClients(){
+        return this.masterService.getClients();
+    }
+
+    @Patch("clients/:id")
+    updateClient(@Param('id') id: string, @Body() body: UpdateClientDto){
+        return this.masterService.updateClient(id, body);
     }
 
     // ── Generic Master Entries ──────────────────────────────────

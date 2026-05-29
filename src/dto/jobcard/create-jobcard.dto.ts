@@ -59,4 +59,8 @@ export class CreateJobCardDto {
     @IsString()
     @IsNotEmpty()
     quality: string
+
+    @IsString()
+    @IsNotEmpty()
+    mill: string
 }

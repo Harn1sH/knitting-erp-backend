@@ -46,6 +46,7 @@ export class JobcardService {
                     dia: jobCardData.dia,
                     count: jobCardData.yarnCount.toString(), // Fix: converted number to string
                     quality: jobCardData.quality,
+                    mill: jobCardData.mill,
                     composition: jobCardData.yarnComposition,
                     rate: jobCardData.ratePerKG,
                     orderQuantity: jobCardData.orderQuantity,

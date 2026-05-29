@@ -36,6 +36,7 @@ model JobCard {
   composition     String
   count           String
   quality         String   @default("")
+  mill            String   @default("")
   rate            Float
   orderQuantity   Float
   totalYarnNeeded Float
@@ -137,6 +138,34 @@ model Supplier {
 
   // Relations
   yarnInwards   YarnInward[]
+}
+
+model Client {
+  id            String   @id @default(cuid())
+  name          String
+  contactPerson String?
+  phoneNumber   String?
+  altPhoneNumber String?
+  email         String?
+  address       String?
+  city          String?
+  state         String?
+  pincode       String?
+
+  gstNumber     String?  @unique
+  panNumber     String?
+  bankName      String?
+  accountNumber String?
+  ifscCode      String?
+
+  remarks       String?
+
+  paymentTerms  String?  // e.g., "30 days", "Advance"
+
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model MasterEntry {
