@@ -31,24 +31,16 @@ model JobCard {
   id              String   @id @default(uuid())
   jobNumber       String   @unique
   customerName    String
-  gsm             Float
-  dia             Float
-  composition     String
-  count           String
-  quality         String   @default("")
-  mill            String   @default("")
-  rate            Float
-  orderQuantity   Float
-  totalYarnNeeded Float
   deliveryDate    DateTime
   status          String
   remarks         String
   createdAt       DateTime @default(now())
 
-  fabricType      String
   brand           String
   machine         String
   machineNote     String
+
+  fabricItems     FabricItem[]
 
   yarnInwards     YarnInward[]
   productions     Production[]
@@ -178,4 +170,20 @@ model MasterEntry {
   updatedAt   DateTime @updatedAt
 
   @@unique([category, name])
+}
+
+model FabricItem {
+  id             String   @id @default(cuid())
+  jobCardId      String
+  jobCard        JobCard  @relation(fields: [jobCardId], references: [id])
+  gsm            String
+  dia            String
+  count          String
+  composition    String
+  quality        String
+  mill           String
+  rate           Float
+  orderQuantity  Float
+  totalYarnNeeded Float
+  createdAt      DateTime @default(now())
 }

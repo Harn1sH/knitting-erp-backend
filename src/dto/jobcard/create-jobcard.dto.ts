@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsNumber, IsString, IsNotEmpty } from 'class-validator';
+import { IsDate, IsNumber, IsString, IsNotEmpty, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { CreateFabricItemDto } from './create-fabric-item.dto';
 
 export class CreateJobCardDto {
     @IsString()
@@ -17,50 +18,18 @@ export class CreateJobCardDto {
     @IsString()
     remarks: string
 
-    @IsString()
-    fabricType: string
-
-    @IsNumber()
-    @Type(() => Number)
-    gsm: number
-
-    @IsNumber()
-    @Type(() => Number)
-    @Type(() => Number)
-    dia: number
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CreateFabricItemDto)
+    @ArrayMinSize(1)
+    fabricItems: CreateFabricItemDto[];
 
     @IsString()
-    yarnCount: string
+    machine: string;
 
     @IsString()
-    yarnComposition: string
-
-    @IsNumber()
-    @Type(() => Number)
-    ratePerKG: number
-
-    @IsNumber()
-    @Type(() => Number)
-    orderQuantity: number
-
-    @IsNumber()
-    @Type(() => Number)
-    totalYarnNeeded: number
+    brand: string;
 
     @IsString()
-    machine: string
-
-    @IsString()
-    brand: string
-
-    @IsString()
-    machineNote: string
-
-    @IsString()
-    @IsNotEmpty()
-    quality: string
-
-    @IsString()
-    @IsNotEmpty()
-    mill: string
+    machineNote: string;
 }

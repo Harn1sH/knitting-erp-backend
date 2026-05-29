@@ -10,6 +10,7 @@ export class DeliveryService {
         return this.prismaService.$transaction(async (tx) => {
             const jobCard = await tx.jobCard.findUnique({
                 where: { jobNumber: deliveryData.jobCardId },
+                include: { fabricItems: true }
             });
 
             if (!jobCard) {
@@ -21,11 +22,12 @@ export class DeliveryService {
                 where: { jobCardId: jobCard.id }
             });
             const alreadyDelivered = deliveryAgg._sum.quantityKg || 0;
-            const remaining = jobCard.orderQuantity - alreadyDelivered;
+            const totalOrderQuantity = jobCard.fabricItems.reduce((sum, item) => sum + item.orderQuantity, 0);
+            const remaining = totalOrderQuantity - alreadyDelivered;
             const newQuantity = deliveryData.quantityKg;
 
             if (newQuantity > remaining) {
-                throw new BadRequestException(`Cannot dispatch ${newQuantity} kg. Only ${remaining} kg remaining out of ${jobCard.orderQuantity} kg total.`);
+                throw new BadRequestException(`Cannot dispatch ${newQuantity} kg. Only ${remaining} kg remaining out of ${totalOrderQuantity} kg total.`);
             }
 
             await tx.delivery.create({

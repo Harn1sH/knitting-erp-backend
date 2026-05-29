@@ -35,26 +35,27 @@ export class JobcardService {
 
             return tx.jobCard.create({
                 data: {
-                    // jobNumber: `JOB-${Date.now()}`,  Added because this field is mandatory and unique in schema
                     customerName: jobCardData.customerName,
-                    // createdAt:jobCardData.recievedDate,
                     deliveryDate: jobCardData.deliveryDate,
                     status: 'IN_PROGRESS',
                     remarks: jobCardData.remarks,
-                    fabricType: jobCardData.fabricType,
-                    gsm: jobCardData.gsm,
-                    dia: jobCardData.dia,
-                    count: jobCardData.yarnCount.toString(), // Fix: converted number to string
-                    quality: jobCardData.quality,
-                    mill: jobCardData.mill,
-                    composition: jobCardData.yarnComposition,
-                    rate: jobCardData.ratePerKG,
-                    orderQuantity: jobCardData.orderQuantity,
-                    totalYarnNeeded: jobCardData.totalYarnNeeded,
                     machine: jobCardData.machine,
                     brand: jobCardData.brand,
                     machineNote: jobCardData.machineNote,
                     jobNumber,
+                    fabricItems: {
+                        create: jobCardData.fabricItems.map(item => ({
+                            gsm: item.gsm,
+                            dia: item.dia,
+                            count: item.count.toString(),
+                            composition: item.composition,
+                            quality: item.quality,
+                            mill: item.mill,
+                            rate: item.rate,
+                            orderQuantity: item.orderQuantity,
+                            totalYarnNeeded: item.totalYarnNeeded,
+                        }))
+                    }
                 },
             });
         });
@@ -74,7 +75,8 @@ export class JobcardService {
                         supplier: true
                     }
                 },
-                deliveries: true
+                deliveries: true,
+                fabricItems: true
             }
         })
 
@@ -89,7 +91,7 @@ export class JobcardService {
              date: new Date(y.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
              supplier: y.supplier?.name || 'Unknown',
              type: y.yarnName,
-             count: jobCard.count,
+             count: jobCard.fabricItems.map(f => f.count).join(', '),
              bags: y.bags,
              cones: y.cones,
              weight: `${y.netWeight.toFixed(2)} Kg`,
@@ -97,9 +99,10 @@ export class JobcardService {
         }));
 
         let cumulativeDelivery = 0;
+        const totalOrderQuantity = jobCard.fabricItems.reduce((sum, item) => sum + item.orderQuantity, 0);
         const dispatchRecords = jobCard.deliveries.map(d => {
              cumulativeDelivery += d.quantityKg;
-             const balance = jobCard.orderQuantity - cumulativeDelivery;
+             const balance = totalOrderQuantity - cumulativeDelivery;
              return {
                  date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                  dcNo: d.dcNo,
@@ -115,7 +118,8 @@ export class JobcardService {
             totalYarnReceived,
             totalFabricDelivered,
             yarnInwardLogs,
-            dispatchRecords
+            dispatchRecords,
+            fabricItems: jobCard.fabricItems
         };
     }
 
