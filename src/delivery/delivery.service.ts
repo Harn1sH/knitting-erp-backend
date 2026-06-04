@@ -1,50 +1,91 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateDeliveryDto } from 'src/dto/delivery/create-delivery.dto';
+import { CreateDeliveryChallanDto } from 'src/dto/delivery/create-delivery-challan.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
 export class DeliveryService {
     constructor(private readonly prismaService: PrismaService) {}
 
-    async createDelivery(deliveryData: CreateDeliveryDto) {
+    async getNextDcNumber() {
+        const fullYear = new Date().getFullYear();
+        const yy = String(fullYear).slice(-2);
+
+        const counter = await this.prismaService.challanCounter.findUnique({
+            where: { type_year: { type: 'DC', year: fullYear } }
+        });
+
+        const nextNumber = (counter?.lastNumber ?? 0) + 1;
+        return { dcNo: `DC-${yy}-${String(nextNumber).padStart(4, '0')}` };
+    }
+
+    async createDeliveryChallan(dto: CreateDeliveryChallanDto) {
         return this.prismaService.$transaction(async (tx) => {
             const jobCard = await tx.jobCard.findUnique({
-                where: { jobNumber: deliveryData.jobCardId },
+                where: { jobNumber: dto.jobCardId },
                 include: { fabricItems: true }
             });
 
             if (!jobCard) {
-                throw new Error('Job Card not found');
+                throw new BadRequestException('Job Card not found');
             }
 
-            const deliveryAgg = await tx.delivery.aggregate({
-                _sum: { quantityKg: true },
-                where: { jobCardId: jobCard.id }
+            // Validate each line item's remaining quantity
+            for (const item of dto.items) {
+                const fabricItem = jobCard.fabricItems.find(f => f.id === item.fabricItemId);
+                if (!fabricItem) {
+                    throw new BadRequestException(`Fabric Item ${item.fabricItemId} not found in this Job Card`);
+                }
+
+                const deliveryAgg = await tx.deliveryItem.aggregate({
+                    _sum: { quantityKg: true },
+                    where: {
+                        fabricItemId: item.fabricItemId,
+                        challan: { jobCardId: jobCard.id }
+                    }
+                });
+                const alreadyDelivered = deliveryAgg._sum.quantityKg || 0;
+                const remaining = fabricItem.orderQuantity - alreadyDelivered;
+
+                if (item.quantityKg > remaining) {
+                    throw new BadRequestException(
+                        `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining.`
+                    );
+                }
+            }
+
+            // Generate DC number
+            const fullYear = new Date().getFullYear();
+            const yy = String(fullYear).slice(-2);
+
+            const counter = await tx.challanCounter.upsert({
+                where: { type_year: { type: 'DC', year: fullYear } },
+                create: { type: 'DC', year: fullYear, lastNumber: 1 },
+                update: { lastNumber: { increment: 1 } },
             });
-            const alreadyDelivered = deliveryAgg._sum.quantityKg || 0;
-            const totalOrderQuantity = jobCard.fabricItems.reduce((sum, item) => sum + item.orderQuantity, 0);
-            const remaining = totalOrderQuantity - alreadyDelivered;
-            const newQuantity = deliveryData.quantityKg;
 
-            if (newQuantity > remaining) {
-                throw new BadRequestException(`Cannot dispatch ${newQuantity} kg. Only ${remaining} kg remaining out of ${totalOrderQuantity} kg total.`);
-            }
+            const dcNo = `DC-${yy}-${String(counter.lastNumber).padStart(4, '0')}`;
 
-            await tx.delivery.create({
+            // Create challan with nested items
+            await tx.deliveryChallan.create({
                 data: {
+                    dcNo,
                     jobCardId: jobCard.id,
-                    quantityKg: deliveryData.quantityKg,
-                    dcNo: deliveryData.dcNo,
-                    vehicle: deliveryData.vehicle,
-                    date: deliveryData.date,
-                    numberOfRolls: deliveryData.numberOfRolls,
-                    weightPerRoll: deliveryData.weightPerRoll,
-                    companyName: deliveryData.companyName,
-                    fabricName: deliveryData.fabricName,
+                    vehicle: dto.vehicle ?? null,
+                    companyName: dto.companyName ?? null,
+                    date: dto.date,
+                    items: {
+                        create: dto.items.map(item => ({
+                            fabricItemId: item.fabricItemId,
+                            quantityKg: item.quantityKg,
+                            numberOfRolls: item.numberOfRolls ?? null,
+                            weightPerRoll: item.weightPerRoll ?? null,
+                            fabricName: item.fabricName ?? null,
+                        }))
+                    }
                 },
             });
 
-            return { status: 201, message: "Saved delivery successfully" };
+            return { status: 201, message: "Delivery challan saved successfully", dcNo };
         });
     }
 }

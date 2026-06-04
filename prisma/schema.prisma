@@ -12,19 +12,68 @@ datasource db {
   // No url or directUrl here!
 }
 
-model Delivery {
-  id             String   @id @default(uuid())
-  jobCardId      String
-  quantityKg     Float
-  dcNo           String
-  vehicle        String
-  date           DateTime
-  numberOfRolls  Int?
-  weightPerRoll  Float?
-  companyName    String?
-  fabricName     String?
+model ChallanCounter {
+  id         String @id @default(cuid())
+  type       String   // "DC" or "GRN"
+  year       Int
+  lastNumber Int
 
-  jobCard     JobCard @relation(fields: [jobCardId], references: [id])
+  @@unique([type, year])
+}
+
+model DeliveryChallan {
+  id          String   @id @default(uuid())
+  dcNo        String   @unique
+  jobCardId   String
+  vehicle     String?
+  companyName String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+
+  jobCard     JobCard        @relation(fields: [jobCardId], references: [id])
+  items       DeliveryItem[]
+}
+
+model DeliveryItem {
+  id              String   @id @default(uuid())
+  challanId       String
+  fabricItemId    String
+  quantityKg      Float
+  numberOfRolls   Int?
+  weightPerRoll   Float?
+  fabricName      String?
+
+  challan         DeliveryChallan @relation(fields: [challanId], references: [id])
+  fabricItem      FabricItem      @relation(fields: [fabricItemId], references: [id])
+}
+
+model YarnInwardChallan {
+  id          String   @id @default(uuid())
+  grnNo       String   @unique
+  jobCardId   String
+  supplierId  String
+  entryDate   DateTime
+  remarks     String?
+  createdAt   DateTime @default(now())
+
+  jobCard     JobCard            @relation(fields: [jobCardId], references: [id])
+  supplier    Supplier           @relation(fields: [supplierId], references: [id])
+  items       YarnInwardItem[]
+}
+
+model YarnInwardItem {
+  id           String   @id @default(uuid())
+  challanId    String
+  fabricItemId String
+  yarnName     String
+  color        String?
+  bags         Int
+  cones        Int
+  netWeight    Float
+  weightPerBag Float
+
+  challan      YarnInwardChallan @relation(fields: [challanId], references: [id])
+  fabricItem   FabricItem        @relation(fields: [fabricItemId], references: [id])
 }
 
 model JobCard {
@@ -40,11 +89,11 @@ model JobCard {
   machine         String
   machineNote     String
 
-  fabricItems     FabricItem[]
+  fabricItems         FabricItem[]
 
-  yarnInwards     YarnInward[]
-  productions     Production[]
-  deliveries      Delivery[]
+  yarnInwardChallans  YarnInwardChallan[]
+  productions         Production[]
+  deliveryChallans    DeliveryChallan[]
 }
 
 model Production {
@@ -76,24 +125,6 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   productions Production[]
-}
-
-model YarnInward {
-  id          String   @id @default(uuid())
-  jobCardId   String
-  supplierId  String
-  yarnName    String
-  color       String
-  bags        Int
-  cones       Int
-  netWeight   Float
-  entryDate   DateTime
-  createdAt   DateTime @default(now())
-  weightPerBag Float
-  remarks String
-
-  jobCard     JobCard @relation(fields: [jobCardId], references: [id])
-  supplier    Supplier @relation(fields: [supplierId], references: [id])
 }
 
 model JobCardCounter {
@@ -129,7 +160,7 @@ model Supplier {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  yarnInwards   YarnInward[]
+  yarnInwardChallans  YarnInwardChallan[]
 }
 
 model Client {
@@ -186,4 +217,7 @@ model FabricItem {
   orderQuantity  Float
   totalYarnNeeded Float
   createdAt      DateTime @default(now())
+
+  yarnInwardItems  YarnInwardItem[]
+  deliveryItems    DeliveryItem[]
 }

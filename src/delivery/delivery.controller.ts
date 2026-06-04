@@ -1,13 +1,18 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
-import { CreateDeliveryDto } from 'src/dto/delivery/create-delivery.dto';
+import { CreateDeliveryChallanDto } from 'src/dto/delivery/create-delivery-challan.dto';
 
 @Controller('delivery')
 export class DeliveryController {
     constructor(private readonly deliveryService: DeliveryService) {}
 
+    @Get('next-dc-number')
+    getNextDcNumber() {
+        return this.deliveryService.getNextDcNumber();
+    }
+
     @Post('create-delivery')
-    createDelivery(@Body() deliveryData: CreateDeliveryDto) {
-        return this.deliveryService.createDelivery(deliveryData);
+    createDelivery(@Body() deliveryData: CreateDeliveryChallanDto) {
+        return this.deliveryService.createDeliveryChallan(deliveryData);
     }
 }

@@ -38,4 +38,8 @@ export class CreateDeliveryDto {
     @IsOptional()
     @IsString()
     fabricName?: string
+
+    @IsString()
+    @IsOptional()
+    fabricItemId?: string;
 }

@@ -1,5 +1,5 @@
 // Architectural Decision: MERGED APPROACH
-// Reasoning: The `getJobCard` method already fetches both `yarnInwards` and `deliveries`
+// Reasoning: The `getJobCard` method already fetches both `yarnInwardChallans` and `deliveryChallans`
 // relationships to calculate total quantities. Making separate endpoints would cause redundant
 // database queries and network requests. By mapping the already-fetched relations to the shapes
 // expected by the frontend (`yarnInwardLogs` and `dispatchRecords`), we save 2 HTTP requests
@@ -69,14 +69,32 @@ export class JobcardService {
             where: {
                 jobNumber: jobNumber
             },
-            include:{
-                yarnInwards: {
+            include: {
+                yarnInwardChallans: {
                     include: {
-                        supplier: true
+                        supplier: true,
+                        items: true
                     }
                 },
-                deliveries: true,
-                fabricItems: true
+                deliveryChallans: {
+                    include: {
+                        items: true
+                    }
+                },
+                fabricItems: {
+                    include: {
+                        yarnInwardItems: {
+                            include: {
+                                challan: { include: { supplier: true } }
+                            }
+                        },
+                        deliveryItems: {
+                            include: {
+                                challan: true
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -84,33 +102,95 @@ export class JobcardService {
             throw new NotFoundException("No Job Card Found")
         }
 
-        const totalYarnReceived = jobCard.yarnInwards.reduce((sum, item) => sum + item.netWeight, 0);
-        const totalFabricDelivered = jobCard.deliveries.reduce((sum, item) => sum + item.quantityKg, 0);
+        // Global totals from all challan items
+        const totalYarnReceived = jobCard.yarnInwardChallans.reduce(
+            (sum, challan) => sum + challan.items.reduce((s, item) => s + item.netWeight, 0), 0
+        );
+        const totalFabricDelivered = jobCard.deliveryChallans.reduce(
+            (sum, challan) => sum + challan.items.reduce((s, item) => s + item.quantityKg, 0), 0
+        );
 
-        const yarnInwardLogs = jobCard.yarnInwards.map(y => ({
-             date: new Date(y.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-             supplier: y.supplier?.name || 'Unknown',
-             type: y.yarnName,
-             count: jobCard.fabricItems.map(f => f.count).join(', '),
-             bags: y.bags,
-             cones: y.cones,
-             weight: `${y.netWeight.toFixed(2)} Kg`,
-             status: "Received"
-        }));
+        // Flatten yarn inward challan items into log rows
+        const yarnInwardLogs = jobCard.yarnInwardChallans.flatMap(challan =>
+            challan.items.map(item => ({
+                date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                grnNo: challan.grnNo,
+                supplier: challan.supplier?.name || 'Unknown',
+                type: item.yarnName,
+                bags: item.bags,
+                cones: item.cones,
+                weight: `${item.netWeight.toFixed(2)} Kg`,
+                status: 'Received'
+            }))
+        );
 
+        // Flatten delivery challan items into dispatch rows
         let cumulativeDelivery = 0;
         const totalOrderQuantity = jobCard.fabricItems.reduce((sum, item) => sum + item.orderQuantity, 0);
-        const dispatchRecords = jobCard.deliveries.map(d => {
-             cumulativeDelivery += d.quantityKg;
-             const balance = totalOrderQuantity - cumulativeDelivery;
-             return {
-                 date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                 dcNo: d.dcNo,
-                 qty: `${d.quantityKg.toFixed(2)} Kg`,
-                 balance: `${Math.max(0, balance).toFixed(2)} Kg`,
-                 vehicle: d.vehicle,
-                 status: "Dispatched"
-             };
+        const dispatchRecords = jobCard.deliveryChallans.flatMap(challan =>
+            challan.items.map(item => {
+                cumulativeDelivery += item.quantityKg;
+                const balance = totalOrderQuantity - cumulativeDelivery;
+                return {
+                    date: new Date(challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    dcNo: challan.dcNo,
+                    qty: `${item.quantityKg.toFixed(2)} Kg`,
+                    balance: `${Math.max(0, balance).toFixed(2)} Kg`,
+                    vehicle: challan.vehicle,
+                    status: 'Dispatched'
+                };
+            })
+        );
+
+        // Per-fabric-item summaries
+        const fabricItemSummaries = jobCard.fabricItems.map(item => {
+            const totalYarnReceived = item.yarnInwardItems.reduce((sum, y) => sum + y.netWeight, 0);
+            const totalFabricDelivered = item.deliveryItems.reduce((sum, d) => sum + d.quantityKg, 0);
+
+            const yarnInwardLogs = item.yarnInwardItems.map(y => ({
+                date: new Date(y.challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                grnNo: y.challan.grnNo,
+                supplier: y.challan.supplier?.name || 'Unknown',
+                type: y.yarnName,
+                bags: y.bags,
+                cones: y.cones,
+                weight: `${y.netWeight.toFixed(2)} Kg`,
+                status: 'Received'
+            }));
+
+            let cumulative = 0;
+            const dispatchRecords = item.deliveryItems.map(d => {
+                cumulative += d.quantityKg;
+                const balance = item.orderQuantity - cumulative;
+                return {
+                    date: new Date(d.challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    dcNo: d.challan.dcNo,
+                    qty: `${d.quantityKg.toFixed(2)} Kg`,
+                    balance: `${Math.max(0, balance).toFixed(2)} Kg`,
+                    vehicle: d.challan.vehicle,
+                    status: 'Dispatched'
+                };
+            });
+
+            return {
+                id: item.id,
+                gsm: item.gsm,
+                dia: item.dia,
+                count: item.count,
+                composition: item.composition,
+                quality: item.quality,
+                mill: item.mill,
+                orderQuantity: item.orderQuantity,
+                totalYarnNeeded: item.totalYarnNeeded,
+                rate: item.rate,
+                totalYarnReceived,
+                totalFabricDelivered,
+                remainingDelivery: Math.max(0, item.orderQuantity - totalFabricDelivered),
+                yarnPipelinePercent: Math.min(100, item.totalYarnNeeded ? (totalYarnReceived / item.totalYarnNeeded) * 100 : 0),
+                deliveryPercent: Math.min(100, item.orderQuantity ? (totalFabricDelivered / item.orderQuantity) * 100 : 0),
+                yarnInwardLogs,
+                dispatchRecords
+            };
         });
 
         return {
@@ -119,6 +199,7 @@ export class JobcardService {
             totalFabricDelivered,
             yarnInwardLogs,
             dispatchRecords,
+            fabricItemSummaries,
             fabricItems: jobCard.fabricItems
         };
     }
