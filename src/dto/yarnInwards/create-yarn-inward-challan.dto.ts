@@ -5,6 +5,10 @@ export class YarnInwardItemDto {
     @IsString()
     fabricItemId: string
 
+    @IsOptional()
+    @IsString()
+    supplierId?: string
+
     @IsString()
     yarnName: string
 
@@ -23,6 +27,10 @@ export class YarnInwardItemDto {
     @IsNumber()
     @Type(() => Number)
     weightPerBag: number
+
+    @IsNumber()
+    @Type(() => Number)
+    wtPerCone: number
 
     @IsNumber()
     @Type(() => Number)

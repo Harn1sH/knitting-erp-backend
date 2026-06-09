@@ -29,6 +29,8 @@ export class DeliveryService {
                 throw new BadRequestException('Job Card not found');
             }
 
+            const accumulatedDelivery = new Map<string, number>();
+
             // Validate each line item's remaining quantity
             for (const item of dto.items) {
                 const fabricItem = jobCard.fabricItems.find(f => f.id === item.fabricItemId);
@@ -44,13 +46,16 @@ export class DeliveryService {
                     }
                 });
                 const alreadyDelivered = deliveryAgg._sum.quantityKg || 0;
-                const remaining = fabricItem.orderQuantity - alreadyDelivered;
+                const accumulated = accumulatedDelivery.get(item.fabricItemId) || 0;
+                const remaining = fabricItem.orderQuantity - alreadyDelivered - accumulated;
 
                 if (item.quantityKg > remaining) {
                     throw new BadRequestException(
                         `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining.`
                     );
                 }
+
+                accumulatedDelivery.set(item.fabricItemId, accumulated + item.quantityKg);
             }
 
             // Generate DC number
@@ -80,6 +85,8 @@ export class DeliveryService {
                             numberOfRolls: item.numberOfRolls ?? null,
                             weightPerRoll: item.weightPerRoll ?? null,
                             fabricName: item.fabricName ?? null,
+                            rolls: item.rolls,
+                            wtPerRoll: item.wtPerRoll,
                         }))
                     }
                 },

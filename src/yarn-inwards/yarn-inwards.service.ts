@@ -29,12 +29,34 @@ export class YarnInwardsService {
                 throw new BadRequestException('Job Card not found');
             }
 
-            // Validate fabric items exist
+            const accumulatedYarn = new Map<string, number>();
+
+            // Validate fabric items exist and check remaining quantity
             for (const item of dto.items) {
                 const fabricItem = jobCard.fabricItems.find(f => f.id === item.fabricItemId);
                 if (!fabricItem) {
                     throw new BadRequestException(`Fabric Item ${item.fabricItemId} not found in this Job Card`);
                 }
+
+                const yarnAgg = await tx.yarnInwardItem.aggregate({
+                    _sum: { netWeight: true },
+                    where: {
+                        fabricItemId: item.fabricItemId,
+                        challan: { jobCardId: jobCard.id }
+                    }
+                });
+                
+                const alreadyReceived = yarnAgg._sum.netWeight || 0;
+                const accumulated = accumulatedYarn.get(item.fabricItemId) || 0;
+                const remaining = fabricItem.totalYarnNeeded - alreadyReceived - accumulated;
+
+                if (item.netWeight > remaining) {
+                    throw new BadRequestException(
+                        `Cannot receive ${item.netWeight} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining.`
+                    );
+                }
+
+                accumulatedYarn.set(item.fabricItemId, accumulated + item.netWeight);
             }
 
             // Generate GRN number
@@ -60,10 +82,12 @@ export class YarnInwardsService {
                     items: {
                         create: dto.items.map(item => ({
                             fabricItemId: item.fabricItemId,
+                            supplierId: item.supplierId ?? null,
                             yarnName: item.yarnName,
                             color: item.color ?? null,
                             bags: item.bags,
                             cones: item.cones,
+                            wtPerCone: item.wtPerCone,
                             netWeight: item.netWeight,
                             weightPerBag: item.weightPerBag,
                         }))

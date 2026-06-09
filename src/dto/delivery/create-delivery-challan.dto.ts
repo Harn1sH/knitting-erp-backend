@@ -1,5 +1,5 @@
 import { Type } from "class-transformer"
-import { IsArray, IsDate, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
+import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 
 export class DeliveryItemDto {
     @IsString()
@@ -22,6 +22,14 @@ export class DeliveryItemDto {
     @IsOptional()
     @IsString()
     fabricName?: string
+
+    @IsInt()
+    @Type(() => Number)
+    rolls: number
+
+    @IsNumber()
+    @Type(() => Number)
+    wtPerRoll: number
 }
 
 export class CreateDeliveryChallanDto {

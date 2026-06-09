@@ -85,7 +85,8 @@ export class JobcardService {
                     include: {
                         yarnInwardItems: {
                             include: {
-                                challan: { include: { supplier: true } }
+                                challan: { include: { supplier: true } },
+                                supplier: true
                             }
                         },
                         deliveryItems: {
@@ -172,6 +173,13 @@ export class JobcardService {
                 };
             });
 
+            // Derive last-used supplier for this fabric item (from the most recent yarn inward)
+            const lastYarnInward = item.yarnInwardItems.length > 0
+                ? item.yarnInwardItems[item.yarnInwardItems.length - 1]
+                : null;
+            const lastSupplierId = lastYarnInward?.supplierId ?? lastYarnInward?.challan?.supplierId ?? null;
+            const lastSupplierName = lastYarnInward?.supplier?.name ?? lastYarnInward?.challan?.supplier?.name ?? null;
+
             return {
                 id: item.id,
                 gsm: item.gsm,
@@ -188,6 +196,8 @@ export class JobcardService {
                 remainingDelivery: Math.max(0, item.orderQuantity - totalFabricDelivered),
                 yarnPipelinePercent: Math.min(100, item.totalYarnNeeded ? (totalYarnReceived / item.totalYarnNeeded) * 100 : 0),
                 deliveryPercent: Math.min(100, item.orderQuantity ? (totalFabricDelivered / item.orderQuantity) * 100 : 0),
+                lastSupplierId,
+                lastSupplierName,
                 yarnInwardLogs,
                 dispatchRecords
             };
