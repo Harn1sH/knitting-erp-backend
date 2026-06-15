@@ -9,7 +9,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // No url or directUrl here!
+  // URL is supplied via prisma.config.ts; no url needed here
 }
 
 model ChallanCounter {
@@ -50,17 +50,19 @@ model DeliveryItem {
 }
 
 model YarnInwardChallan {
-  id          String   @id @default(uuid())
-  grnNo       String   @unique
-  jobCardId   String
-  supplierId  String
-  entryDate   DateTime
-  remarks     String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  grnNo         String   @unique
+  partyDcNumber String?
+  vehicleNumber String?
+  jobCardId     String
+  supplierId    String
+  entryDate     DateTime
+  remarks       String?
+  createdAt     DateTime @default(now())
 
-  jobCard     JobCard            @relation(fields: [jobCardId], references: [id])
-  supplier    Supplier           @relation(fields: [supplierId], references: [id])
-  items       YarnInwardItem[]
+  jobCard       JobCard            @relation(fields: [jobCardId], references: [id])
+  supplier      Supplier           @relation(fields: [supplierId], references: [id])
+  items         YarnInwardItem[]
 }
 
 model YarnInwardItem {

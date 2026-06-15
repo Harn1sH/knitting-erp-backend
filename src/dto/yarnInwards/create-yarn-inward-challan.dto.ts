@@ -45,6 +45,14 @@ export class CreateYarnInwardChallanDto {
     @IsString()
     supplierId: string
 
+    @IsOptional()
+    @IsString()
+    partyDcNumber?: string
+
+    @IsOptional()
+    @IsString()
+    vehicleNumber?: string
+
     @IsDate()
     @Type(() => Date)
     entryDate: Date

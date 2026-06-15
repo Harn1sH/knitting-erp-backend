@@ -11,7 +11,7 @@ import { YarnInwardsModule } from './yarn-inwards/yarn-inwards.module';
 import { DeliveryModule } from './delivery/delivery.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule],
+  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule],
   controllers: [AppController],
   providers: [AppService],
 })

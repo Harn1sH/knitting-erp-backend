@@ -116,12 +116,15 @@ export class JobcardService {
             challan.items.map(item => ({
                 date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 grnNo: challan.grnNo,
+                partyDcNumber: challan.partyDcNumber ?? '—',
+                vehicleNumber: challan.vehicleNumber ?? '',
                 supplier: challan.supplier?.name || 'Unknown',
                 type: item.yarnName,
                 bags: item.bags,
                 cones: item.cones,
                 weight: `${item.netWeight.toFixed(2)} Kg`,
-                status: 'Received'
+                status: 'Received',
+                remarks: challan.remarks ?? ''
             }))
         );
 
@@ -145,18 +148,25 @@ export class JobcardService {
 
         // Per-fabric-item summaries
         const fabricItemSummaries = jobCard.fabricItems.map(item => {
-            const totalYarnReceived = item.yarnInwardItems.reduce((sum, y) => sum + y.netWeight, 0);
-            const totalFabricDelivered = item.deliveryItems.reduce((sum, d) => sum + d.quantityKg, 0);
+            const totalYarnReceived = Math.round(
+                item.yarnInwardItems.reduce((sum, y) => sum + y.netWeight, 0) * 1000
+            ) / 1000;
+            const totalFabricDelivered = Math.round(
+                item.deliveryItems.reduce((sum, d) => sum + d.quantityKg, 0) * 1000
+            ) / 1000;
 
             const yarnInwardLogs = item.yarnInwardItems.map(y => ({
                 date: new Date(y.challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 grnNo: y.challan.grnNo,
+                partyDcNumber: y.challan.partyDcNumber ?? '—',
+                vehicleNumber: y.challan.vehicleNumber ?? '',
                 supplier: y.challan.supplier?.name || 'Unknown',
                 type: y.yarnName,
                 bags: y.bags,
                 cones: y.cones,
                 weight: `${y.netWeight.toFixed(2)} Kg`,
-                status: 'Received'
+                status: 'Received',
+                remarks: y.challan.remarks ?? ''
             }));
 
             let cumulative = 0;
@@ -193,9 +203,9 @@ export class JobcardService {
                 rate: item.rate,
                 totalYarnReceived,
                 totalFabricDelivered,
-                remainingDelivery: Math.max(0, item.orderQuantity - totalFabricDelivered),
-                yarnPipelinePercent: Math.min(100, item.totalYarnNeeded ? (totalYarnReceived / item.totalYarnNeeded) * 100 : 0),
-                deliveryPercent: Math.min(100, item.orderQuantity ? (totalFabricDelivered / item.orderQuantity) * 100 : 0),
+                remainingDelivery: Math.round(Math.max(0, item.orderQuantity - totalFabricDelivered) * 1000) / 1000,
+                yarnPipelinePercent: Math.round(Math.min(100, item.totalYarnNeeded ? (totalYarnReceived / item.totalYarnNeeded) * 100 : 0) * 10) / 10,
+                deliveryPercent: Math.round(Math.min(100, item.orderQuantity ? (totalFabricDelivered / item.orderQuantity) * 100 : 0) * 10) / 10,
                 lastSupplierId,
                 lastSupplierName,
                 yarnInwardLogs,
