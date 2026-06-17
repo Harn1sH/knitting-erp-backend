@@ -141,6 +141,7 @@ export class JobcardService {
                     qty: `${item.quantityKg.toFixed(2)} Kg`,
                     balance: `${Math.max(0, balance).toFixed(2)} Kg`,
                     vehicle: challan.vehicle,
+                    rolls: item.rolls,
                     status: 'Dispatched'
                 };
             })
@@ -179,6 +180,7 @@ export class JobcardService {
                     qty: `${d.quantityKg.toFixed(2)} Kg`,
                     balance: `${Math.max(0, balance).toFixed(2)} Kg`,
                     vehicle: d.challan.vehicle,
+                    rolls: d.rolls,
                     status: 'Dispatched'
                 };
             });
