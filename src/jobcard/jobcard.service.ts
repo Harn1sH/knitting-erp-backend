@@ -54,6 +54,8 @@ export class JobcardService {
                             rate: item.rate,
                             orderQuantity: item.orderQuantity,
                             totalYarnNeeded: item.totalYarnNeeded,
+                            gg: item.gg,
+                            ll: item.ll,
                         }))
                     }
                 },
@@ -200,6 +202,8 @@ export class JobcardService {
                 composition: item.composition,
                 quality: item.quality,
                 mill: item.mill,
+                gg: item.gg,
+                ll: item.ll,
                 orderQuantity: item.orderQuantity,
                 totalYarnNeeded: item.totalYarnNeeded,
                 rate: item.rate,

@@ -224,6 +224,8 @@ model FabricItem {
   rate           Float
   orderQuantity  Float
   totalYarnNeeded Float
+  gg             Float @default(0)
+  ll             Float @default(0)
   createdAt      DateTime @default(now())
 
   yarnInwardItems  YarnInwardItem[]

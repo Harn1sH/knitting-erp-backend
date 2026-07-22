@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
 
 export class CreateFabricItemDto {
   @IsString()
@@ -33,4 +33,12 @@ export class CreateFabricItemDto {
 
   @IsNumber()
   totalYarnNeeded: number;
+
+  @IsNumber()
+  @Min(0)
+  gg: number;
+
+  @IsNumber()
+  @Min(0)
+  ll: number;
 }
