@@ -102,6 +102,7 @@ export class DeliveryService {
                                 numberOfRolls: item.numberOfRolls ?? null,
                                 weightPerRoll: item.weightPerRoll ?? null,
                                 fabricName: item.fabricName ?? null,
+                                dia: item.dia ?? null,
                                 rolls: item.rolls,
                                 wtPerRoll: item.wtPerRoll,
                             })),

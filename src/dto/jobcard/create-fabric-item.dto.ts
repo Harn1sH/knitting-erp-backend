@@ -6,8 +6,10 @@ export class CreateFabricItemDto {
   gsm: string;
 
   @IsString()
-  @IsNotEmpty()
   dia: string;
+
+  @IsNumber()
+  rate: number;
 
   @IsString()
   @IsNotEmpty()
@@ -25,8 +27,6 @@ export class CreateFabricItemDto {
   @IsNotEmpty()
   mill: string;
 
-  @IsNumber()
-  rate: number;
 
   @IsNumber()
   orderQuantity: number;

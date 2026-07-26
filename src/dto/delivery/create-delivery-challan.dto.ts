@@ -23,6 +23,10 @@ export class DeliveryItemDto {
     @IsString()
     fabricName?: string
 
+    @IsOptional()
+    @IsString()
+    dia?: string
+
     @IsInt()
     @Type(() => Number)
     rolls: number

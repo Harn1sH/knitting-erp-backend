@@ -30,7 +30,7 @@ export class YarnInwardsService {
                     throw new BadRequestException('Job Card not found');
                 }
 
-                const fabricItemIds = [...new Set(dto.items.map((i) => i.fabricItemId))];
+                const fabricItemIds = [...new Set(dto.items.map((i) => i.fabricItemId).filter((id): id is string => !!id))];
 
                 const receivedTotals = await tx.yarnInwardItem.groupBy({
                     by: ['fabricItemId'],
@@ -44,12 +44,19 @@ export class YarnInwardsService {
                 });
 
                 const receivedMap = new Map<string, number>(
-                    receivedTotals.map((row) => [row.fabricItemId, row._sum.netWeight ?? 0]),
+                    receivedTotals
+                        .filter((row) => row.fabricItemId !== null)
+                        .map((row) => [row.fabricItemId as string, row._sum.netWeight ?? 0]),
                 );
 
                 const accumulatedYarn = new Map<string, number>();
 
                 for (const item of dto.items) {
+                    if (!item.fabricItemId && item.customFabricItem) {
+                        // Custom items do not map to a specific Job Card Fabric Item requirement
+                        continue;
+                    }
+
                     const fabricItem = jobCard.fabricItems.find(
                         (f) => f.id === item.fabricItemId,
                     );
@@ -60,8 +67,8 @@ export class YarnInwardsService {
                         );
                     }
 
-                    const alreadyReceived = receivedMap.get(item.fabricItemId) ?? 0;
-                    const accumulated = accumulatedYarn.get(item.fabricItemId) ?? 0;
+                    const alreadyReceived = receivedMap.get(item.fabricItemId!) ?? 0;
+                    const accumulated = accumulatedYarn.get(item.fabricItemId!) ?? 0;
                     const remaining =
                         fabricItem.totalYarnNeeded - alreadyReceived - accumulated;
 
@@ -74,7 +81,7 @@ export class YarnInwardsService {
                     }
 
                     accumulatedYarn.set(
-                        item.fabricItemId,
+                        item.fabricItemId!,
                         accumulated + item.netWeight,
                     );
                 }
@@ -101,13 +108,12 @@ export class YarnInwardsService {
                         remarks: dto.remarks ?? null,
                         items: {
                             create: dto.items.map((item) => ({
-                                fabricItemId: item.fabricItemId,
+                                fabricItemId: item.fabricItemId ?? null,
+                                customFabricItem: item.customFabricItem ?? null,
                                 supplierId: item.supplierId ?? null,
                                 yarnName: item.yarnName,
                                 color: item.color ?? null,
                                 bags: item.bags,
-                                cones: item.cones,
-                                wtPerCone: item.wtPerCone,
                                 netWeight: item.netWeight,
                                 weightPerBag: item.weightPerBag,
                             })),

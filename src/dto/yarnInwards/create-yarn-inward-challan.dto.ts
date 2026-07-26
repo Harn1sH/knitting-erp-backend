@@ -2,8 +2,13 @@ import { Type } from "class-transformer"
 import { IsArray, IsDate, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 
 export class YarnInwardItemDto {
+    @IsOptional()
     @IsString()
-    fabricItemId: string
+    fabricItemId?: string
+
+    @IsOptional()
+    @IsString()
+    customFabricItem?: string
 
     @IsOptional()
     @IsString()
@@ -22,15 +27,7 @@ export class YarnInwardItemDto {
 
     @IsNumber()
     @Type(() => Number)
-    cones: number
-
-    @IsNumber()
-    @Type(() => Number)
     weightPerBag: number
-
-    @IsNumber()
-    @Type(() => Number)
-    wtPerCone: number
 
     @IsNumber()
     @Type(() => Number)

@@ -42,6 +42,7 @@ model DeliveryItem {
   numberOfRolls   Int?
   weightPerRoll   Float?
   fabricName      String?
+  dia             String?
   rolls           Int
   wtPerRoll       Float
 
@@ -66,20 +67,19 @@ model YarnInwardChallan {
 }
 
 model YarnInwardItem {
-  id           String   @id @default(uuid())
-  challanId    String
-  fabricItemId String
-  supplierId   String?
-  yarnName     String
-  color        String?
-  bags         Int
-  cones        Int
-  netWeight    Float
-  weightPerBag Float
-  wtPerCone    Float?
+  id               String   @id @default(uuid())
+  challanId        String
+  fabricItemId     String?
+  customFabricItem String?
+  supplierId       String?
+  yarnName         String
+  color            String?
+  bags             Int
+  netWeight        Float
+  weightPerBag     Float
 
   challan      YarnInwardChallan @relation(fields: [challanId], references: [id])
-  fabricItem   FabricItem        @relation(fields: [fabricItemId], references: [id])
+  fabricItem   FabricItem?       @relation(fields: [fabricItemId], references: [id])
   supplier     Supplier?         @relation(fields: [supplierId], references: [id])
 }
 

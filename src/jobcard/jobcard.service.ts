@@ -123,7 +123,6 @@ export class JobcardService {
                 supplier: challan.supplier?.name || 'Unknown',
                 type: item.yarnName,
                 bags: item.bags,
-                cones: item.cones,
                 weight: `${item.netWeight.toFixed(2)} Kg`,
                 status: 'Received',
                 remarks: challan.remarks ?? ''
@@ -166,7 +165,6 @@ export class JobcardService {
                 supplier: y.challan.supplier?.name || 'Unknown',
                 type: y.yarnName,
                 bags: y.bags,
-                cones: y.cones,
                 weight: `${y.netWeight.toFixed(2)} Kg`,
                 status: 'Received',
                 remarks: y.challan.remarks ?? ''
@@ -183,7 +181,8 @@ export class JobcardService {
                     balance: `${Math.max(0, balance).toFixed(2)} Kg`,
                     vehicle: d.challan.vehicle,
                     rolls: d.rolls,
-                    status: 'Dispatched'
+                    status: 'Dispatched',
+                    dia: d.dia ?? item.dia
                 };
             });
 
