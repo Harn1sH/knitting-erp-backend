@@ -232,24 +232,31 @@ export class JobcardService {
         };
     }
 
-    async getAllJobCards(jobNumber?: string) {
+    async getAllJobCards(jobNumber?: string, page: number = 1, limit: number = 10) {
         const where: Prisma.JobCardWhereInput = {};
 
         if (jobNumber) {
             where.jobNumber = { contains: jobNumber, mode: 'insensitive' };
         }
 
-        const jobCards = await this.prisma.jobCard.findMany({ 
-            where,
-            include: {
-                fabricItems: true
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
+        const skip = (page - 1) * limit;
 
-        return jobCards.map(job => {
+        const [jobCards, total] = await this.prisma.$transaction([
+            this.prisma.jobCard.findMany({ 
+                where,
+                include: {
+                    fabricItems: true
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip,
+                take: limit,
+            }),
+            this.prisma.jobCard.count({ where })
+        ]);
+
+        const data = jobCards.map(job => {
             return {
                 ...job,
                 gsm: job.fabricItems.map(f => f.gsm).filter(Boolean).join(', '),
@@ -262,6 +269,15 @@ export class JobcardService {
                 machine: job.machine && job.brand ? `${job.machine} (${job.brand})` : (job.machine || job.brand || ''),
             };
         });
+
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                lastPage: Math.ceil(total / limit)
+            }
+        };
     }
 
     async getAllActiveJobCardNames() {

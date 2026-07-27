@@ -15,8 +15,12 @@ export class JobcardController {
 
     @UseGuards(JwtAuthGuard)
     @Get('get-all-jobcards')
-    getAllJobCards(@Query('jobNumber') jobNumber?: string) {
-        return this.jobcardService.getAllJobCards(jobNumber)
+    getAllJobCards(
+        @Query('jobNumber') jobNumber?: string,
+        @Query('page') page: string = '1',
+        @Query('limit') limit: string = '10'
+    ) {
+        return this.jobcardService.getAllJobCards(jobNumber, parseInt(page, 10), parseInt(limit, 10));
     }
 
     @UseGuards(JwtAuthGuard)
