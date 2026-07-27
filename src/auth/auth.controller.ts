@@ -8,6 +8,8 @@ import type { Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
+    private readonly isProduction = process.env.NODE_ENV === 'production';
+
     constructor(private authService: AuthService) { }
 
     @Post('login')
@@ -15,20 +17,16 @@ export class AuthController {
         @Body() body: { email: string; password: string },
         @Res({ passthrough: true }) res: Response,
     ) {
-        console.log('wporks');
-        
         const result = await this.authService.login(body.email, body.password);
 
         res.cookie('token', result.accessToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: this.isProduction,
+            sameSite: this.isProduction ? 'none' : 'lax',
             maxAge: 24 * 60 * 60 * 1000, // 1 day
         });
 
         res.status(200)
-
-        // res.redirect('/dashboard')
 
         return { message: 'Login successful', statusCode: 200 };
     }
@@ -52,8 +50,8 @@ export class AuthController {
     logout(@Res({ passthrough: true }) res: Response) {
         res.clearCookie('token', {
             httpOnly: true,
-            secure: true,
-            sameSite: 'none',
+            secure: this.isProduction,
+            sameSite: this.isProduction ? 'none' : 'lax',
         });
 
         return { message: 'Logged out' };

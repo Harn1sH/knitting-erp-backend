@@ -60,6 +60,9 @@ export class JobcardService {
                     }
                 },
             });
+        }, {
+            maxWait: 5000, // 5 seconds max wait to connect, default 2
+            timeout: 10000, // 10 seconds
         });
         console.log(temp);
 
