@@ -13,7 +13,7 @@ async function bootstrap() {
   );
   
   app.enableCors({
-    origin: 'http://localhost:5173', // your frontend
+    origin: ['http://localhost:5173','https://agathyafabrics.netlify.app'],
     credentials: true,
   });
   await app.listen(process.env.PORT ?? 3000);
