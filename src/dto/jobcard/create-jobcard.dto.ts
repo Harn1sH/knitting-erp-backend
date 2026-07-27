@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsNumber, IsString, IsNotEmpty, IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
+import { IsDate, IsNumber, IsString, IsNotEmpty, IsArray, ValidateNested, ArrayMinSize, IsOptional } from 'class-validator';
 import { CreateFabricItemDto } from './create-fabric-item.dto';
 
 export class CreateJobCardDto {
@@ -8,11 +8,7 @@ export class CreateJobCardDto {
 
     @IsDate()
     @Type(() => Date)
-    recievedDate: Date
-
-    @IsDate()
-    @Type(() => Date)
-    deliveryDate: Date
+    jobReceivedDate: Date
 
 
     @IsString()

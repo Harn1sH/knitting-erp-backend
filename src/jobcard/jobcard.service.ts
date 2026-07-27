@@ -36,8 +36,8 @@ export class JobcardService {
             return tx.jobCard.create({
                 data: {
                     customerName: jobCardData.customerName,
-                    deliveryDate: jobCardData.deliveryDate,
                     status: 'IN_PROGRESS',
+                    jobReceivedDate: jobCardData.jobReceivedDate,
                     remarks: jobCardData.remarks,
                     machine: jobCardData.machine,
                     brand: jobCardData.brand,
@@ -236,14 +236,32 @@ export class JobcardService {
         const where: Prisma.JobCardWhereInput = {};
 
         if (jobNumber) {
-            where.jobNumber = jobNumber;
+            where.jobNumber = { contains: jobNumber, mode: 'insensitive' };
         }
 
+        const jobCards = await this.prisma.jobCard.findMany({ 
+            where,
+            include: {
+                fabricItems: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
 
-
-        const jobCards = await this.prisma.jobCard.findMany({ where })
-
-        return jobCards;
+        return jobCards.map(job => {
+            return {
+                ...job,
+                gsm: job.fabricItems.map(f => f.gsm).filter(Boolean).join(', '),
+                orderQuantity: job.fabricItems.reduce((acc, f) => acc + (f.orderQuantity || 0), 0),
+                dia: job.fabricItems.map(f => f.dia).filter(Boolean).join(', '),
+                composition: job.fabricItems.map(f => f.composition).filter(Boolean).join(', '),
+                count: job.fabricItems.map(f => f.count).filter(Boolean).join(', '),
+                rate: job.fabricItems.reduce((acc, f) => acc + (f.rate || 0), 0),
+                totalYarnNeeded: job.fabricItems.reduce((acc, f) => acc + (f.totalYarnNeeded || 0), 0),
+                machine: job.machine && job.brand ? `${job.machine} (${job.brand})` : (job.machine || job.brand || ''),
+            };
+        });
     }
 
     async getAllActiveJobCardNames() {

@@ -19,13 +19,23 @@ export class DashboardService {
             take:5,
             orderBy:{
                 createdAt:"desc"
+            },
+            include: {
+                fabricItems: true
             }
         })
+
+        const formattedRecentJobCards = recentJobCard.map(job => ({
+            ...job,
+            gsm: job.fabricItems.map(f => f.gsm).filter(Boolean).join(', '),
+            orderQuantity: job.fabricItems.reduce((acc, f) => acc + (f.orderQuantity || 0), 0),
+            machine: job.machine && job.brand ? `${job.machine} (${job.brand})` : (job.machine || job.brand || ''),
+        }));
 
         return {
             totalCount,
             activeJob: activeJob.length,
-            recentJobCard
+            recentJobCard: formattedRecentJobCards
         }
     }
 
