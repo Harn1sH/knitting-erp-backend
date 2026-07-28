@@ -31,8 +31,6 @@ export class CreateFabricItemDto {
   @IsNumber()
   orderQuantity: number;
 
-  @IsNumber()
-  totalYarnNeeded: number;
 
   @IsNumber()
   @Min(0)

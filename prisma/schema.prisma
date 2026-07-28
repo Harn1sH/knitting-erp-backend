@@ -78,16 +78,18 @@ model JobCard {
   jobNumber          String              @unique
   customerName       String
   status             String
-  jobReceivedDate    DateTime            @default(now())
   createdAt          DateTime            @default(now())
   remarks            String
   brand              String
   machine            String
   machineNote        String
+  jobReceivedDate    DateTime            @default(now())
   deliveryChallans   DeliveryChallan[]
   fabricItems        FabricItem[]
   productions        Production[]
   yarnInwardChallans YarnInwardChallan[]
+
+  @@index([createdAt(sort: Desc)])
 }
 
 model Production {
@@ -191,7 +193,6 @@ model FabricItem {
   mill            String
   rate            Float
   orderQuantity   Float
-  totalYarnNeeded Float
   createdAt       DateTime         @default(now())
   gg              Float            @default(0)
   ll              Float            @default(0)

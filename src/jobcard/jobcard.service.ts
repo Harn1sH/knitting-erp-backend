@@ -53,7 +53,6 @@ export class JobcardService {
                             mill: item.mill,
                             rate: item.rate,
                             orderQuantity: item.orderQuantity,
-                            totalYarnNeeded: item.totalYarnNeeded,
                             gg: item.gg,
                             ll: item.ll,
                         }))
@@ -207,12 +206,10 @@ export class JobcardService {
                 gg: item.gg,
                 ll: item.ll,
                 orderQuantity: item.orderQuantity,
-                totalYarnNeeded: item.totalYarnNeeded,
                 rate: item.rate,
                 totalYarnReceived,
                 totalFabricDelivered,
                 remainingDelivery: Math.round(Math.max(0, item.orderQuantity - totalFabricDelivered) * 1000) / 1000,
-                yarnPipelinePercent: Math.round(Math.min(100, item.totalYarnNeeded ? (totalYarnReceived / item.totalYarnNeeded) * 100 : 0) * 10) / 10,
                 deliveryPercent: Math.round(Math.min(100, item.orderQuantity ? (totalFabricDelivered / item.orderQuantity) * 100 : 0) * 10) / 10,
                 lastSupplierId,
                 lastSupplierName,
@@ -265,7 +262,6 @@ export class JobcardService {
                 composition: job.fabricItems.map(f => f.composition).filter(Boolean).join(', '),
                 count: job.fabricItems.map(f => f.count).filter(Boolean).join(', '),
                 rate: job.fabricItems.reduce((acc, f) => acc + (f.rate || 0), 0),
-                totalYarnNeeded: job.fabricItems.reduce((acc, f) => acc + (f.totalYarnNeeded || 0), 0),
                 machine: job.machine && job.brand ? `${job.machine} (${job.brand})` : (job.machine || job.brand || ''),
             };
         });

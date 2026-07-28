@@ -47,6 +47,23 @@ export class DeliveryService {
                     deliveredTotals.map((row) => [row.fabricItemId, row._sum.quantityKg ?? 0]),
                 );
 
+                const receivedTotals = await tx.yarnInwardItem.groupBy({
+                    by: ['fabricItemId'],
+                    where: {
+                        fabricItemId: { in: fabricItemIds },
+                        challan: { jobCardId: jobCard.id },
+                    },
+                    _sum: {
+                        netWeight: true,
+                    },
+                });
+
+                const receivedMap = new Map<string, number>(
+                    receivedTotals
+                        .filter(row => row.fabricItemId !== null)
+                        .map((row) => [row.fabricItemId as string, row._sum.netWeight ?? 0]),
+                );
+
                 const accumulatedDelivery = new Map<string, number>();
 
                 for (const item of dto.items) {
@@ -62,12 +79,13 @@ export class DeliveryService {
 
                     const alreadyDelivered = deliveredMap.get(item.fabricItemId) ?? 0;
                     const accumulated = accumulatedDelivery.get(item.fabricItemId) ?? 0;
+                    const totalReceived = receivedMap.get(item.fabricItemId) ?? 0;
                     const remaining =
-                        fabricItem.orderQuantity - alreadyDelivered - accumulated;
+                        totalReceived - alreadyDelivered - accumulated;
 
                     if (item.quantityKg > remaining) {
                         throw new BadRequestException(
-                            `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining.`,
+                            `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining (based on yarn received).`,
                         );
                     }
 

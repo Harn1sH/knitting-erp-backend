@@ -69,17 +69,6 @@ export class YarnInwardsService {
 
                     const alreadyReceived = receivedMap.get(item.fabricItemId!) ?? 0;
                     const accumulated = accumulatedYarn.get(item.fabricItemId!) ?? 0;
-                    const remaining =
-                        fabricItem.totalYarnNeeded - alreadyReceived - accumulated;
-
-                    if (item.netWeight > remaining) {
-                        throw new BadRequestException(
-                            `Cannot receive ${item.netWeight} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(
-                                2,
-                            )} kg remaining.`,
-                        );
-                    }
-
                     accumulatedYarn.set(
                         item.fabricItemId!,
                         accumulated + item.netWeight,

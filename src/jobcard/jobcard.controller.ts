@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, DefaultValuePipe, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { JobcardService } from './jobcard.service';
 import { CreateJobCardDto } from 'src/dto/jobcard/create-jobcard.dto';
 import { JwtAuthGuard } from 'src/auth/jwt.guard';
@@ -17,10 +17,10 @@ export class JobcardController {
     @Get('get-all-jobcards')
     getAllJobCards(
         @Query('jobNumber') jobNumber?: string,
-        @Query('page') page: string = '1',
-        @Query('limit') limit: string = '10'
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+        @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10
     ) {
-        return this.jobcardService.getAllJobCards(jobNumber, parseInt(page, 10), parseInt(limit, 10));
+        return this.jobcardService.getAllJobCards(jobNumber, page, limit);
     }
 
     @UseGuards(JwtAuthGuard)
