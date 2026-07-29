@@ -25,6 +25,10 @@ export class DeliveryItemDto {
 
     @IsOptional()
     @IsString()
+    fabricType?: string
+
+    @IsOptional()
+    @IsString()
     dia?: string
 
     @IsInt()

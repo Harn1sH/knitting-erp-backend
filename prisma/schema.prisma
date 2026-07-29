@@ -35,6 +35,7 @@ model DeliveryItem {
   numberOfRolls Int?
   weightPerRoll Float?
   fabricName    String?
+  fabricType    String?
   rolls         Int
   wtPerRoll     Float
   dia           String?

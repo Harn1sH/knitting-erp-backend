@@ -145,7 +145,8 @@ export class JobcardService {
                     balance: `${Math.max(0, balance).toFixed(2)} Kg`,
                     vehicle: challan.vehicle,
                     rolls: item.rolls,
-                    status: 'Dispatched'
+                    status: 'Dispatched',
+                    fabricType: item.fabricType
                 };
             })
         );
@@ -184,7 +185,8 @@ export class JobcardService {
                     vehicle: d.challan.vehicle,
                     rolls: d.rolls,
                     status: 'Dispatched',
-                    dia: d.dia ?? item.dia
+                    dia: d.dia ?? item.dia,
+                    fabricType: d.fabricType
                 };
             });
 
