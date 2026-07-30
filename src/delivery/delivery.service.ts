@@ -30,7 +30,7 @@ export class DeliveryService {
                     throw new BadRequestException('Job Card not found');
                 }
 
-                const fabricItemIds = [...new Set(dto.items.map((i) => i.fabricItemId))];
+                const fabricItemIds = [...new Set(dto.items.map((i) => i.fabricItemId).filter(Boolean))] as string[];
 
                 const deliveredTotals = await tx.deliveryItem.groupBy({
                     by: ['fabricItemId'],
@@ -44,7 +44,9 @@ export class DeliveryService {
                 });
 
                 const deliveredMap = new Map<string, number>(
-                    deliveredTotals.map((row) => [row.fabricItemId, row._sum.quantityKg ?? 0]),
+                    deliveredTotals
+                        .filter(row => row.fabricItemId !== null)
+                        .map((row) => [row.fabricItemId as string, row._sum.quantityKg ?? 0]),
                 );
 
                 const receivedTotals = await tx.yarnInwardItem.groupBy({
@@ -64,35 +66,48 @@ export class DeliveryService {
                         .map((row) => [row.fabricItemId as string, row._sum.netWeight ?? 0]),
                 );
 
+                const unassignedYarnTotal = await tx.yarnInwardItem.aggregate({
+                    where: {
+                        fabricItemId: null,
+                        challan: { jobCardId: jobCard.id },
+                    },
+                    _sum: {
+                        netWeight: true,
+                    },
+                });
+                const unassignedYarn = unassignedYarnTotal._sum.netWeight ?? 0;
+
                 const accumulatedDelivery = new Map<string, number>();
 
                 for (const item of dto.items) {
-                    const fabricItem = jobCard.fabricItems.find(
-                        (f) => f.id === item.fabricItemId,
-                    );
+                    if (item.fabricItemId) {
+                        const fabricItem = jobCard.fabricItems.find(
+                            (f) => f.id === item.fabricItemId,
+                        );
 
-                    if (!fabricItem) {
-                        throw new BadRequestException(
-                            `Fabric Item ${item.fabricItemId} not found in this Job Card`,
+                        if (!fabricItem) {
+                            throw new BadRequestException(
+                                `Fabric Item ${item.fabricItemId} not found in this Job Card`,
+                            );
+                        }
+
+                        const alreadyDelivered = deliveredMap.get(item.fabricItemId) ?? 0;
+                        const accumulated = accumulatedDelivery.get(item.fabricItemId) ?? 0;
+                        const totalReceived = receivedMap.get(item.fabricItemId) ?? 0;
+                        const effectiveReceived = totalReceived > 0 ? totalReceived : unassignedYarn;
+                        const remaining = effectiveReceived - alreadyDelivered - accumulated;
+
+                        if (item.quantityKg > remaining) {
+                            throw new BadRequestException(
+                                `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining (based on yarn received).`,
+                            );
+                        }
+
+                        accumulatedDelivery.set(
+                            item.fabricItemId,
+                            accumulated + item.quantityKg,
                         );
                     }
-
-                    const alreadyDelivered = deliveredMap.get(item.fabricItemId) ?? 0;
-                    const accumulated = accumulatedDelivery.get(item.fabricItemId) ?? 0;
-                    const totalReceived = receivedMap.get(item.fabricItemId) ?? 0;
-                    const remaining =
-                        totalReceived - alreadyDelivered - accumulated;
-
-                    if (item.quantityKg > remaining) {
-                        throw new BadRequestException(
-                            `Cannot dispatch ${item.quantityKg} kg for fabric "${fabricItem.composition} / ${fabricItem.gsm} GSM". Only ${remaining.toFixed(2)} kg remaining (based on yarn received).`,
-                        );
-                    }
-
-                    accumulatedDelivery.set(
-                        item.fabricItemId,
-                        accumulated + item.quantityKg,
-                    );
                 }
 
                 const fullYear = new Date().getFullYear();
@@ -115,15 +130,13 @@ export class DeliveryService {
                         date: dto.date,
                         items: {
                             create: dto.items.map((item) => ({
-                                fabricItemId: item.fabricItemId,
+                                fabricItemId: item.fabricItemId ?? null,
                                 quantityKg: item.quantityKg,
                                 numberOfRolls: item.numberOfRolls ?? null,
-                                weightPerRoll: item.weightPerRoll ?? null,
                                 fabricName: item.fabricName ?? null,
                                 fabricType: item.fabricType ?? null,
                                 dia: item.dia ?? null,
                                 rolls: item.rolls,
-                                wtPerRoll: item.wtPerRoll,
                             })),
                         },
                     },

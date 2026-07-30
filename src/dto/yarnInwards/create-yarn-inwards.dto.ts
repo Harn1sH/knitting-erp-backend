@@ -42,4 +42,8 @@ export class  CreateYarnInwardDto {
     @IsString()
     @IsOptional()
     fabricItemId?: string;
+
+    @IsString()
+    @IsOptional()
+    dia?: string;
 }

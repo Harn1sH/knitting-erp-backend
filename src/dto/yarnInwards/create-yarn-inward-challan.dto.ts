@@ -32,6 +32,10 @@ export class YarnInwardItemDto {
     @IsNumber()
     @Type(() => Number)
     netWeight: number
+
+    @IsOptional()
+    @IsString()
+    dia?: string
 }
 
 export class CreateYarnInwardChallanDto {

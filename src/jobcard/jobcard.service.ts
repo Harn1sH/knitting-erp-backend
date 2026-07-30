@@ -46,7 +46,6 @@ export class JobcardService {
                     fabricItems: {
                         create: jobCardData.fabricItems.map(item => ({
                             gsm: item.gsm,
-                            dia: item.dia,
                             count: item.count.toString(),
                             composition: item.composition,
                             quality: item.quality,
@@ -80,9 +79,19 @@ export class JobcardService {
                         items: true
                     }
                 },
+                yarnReturns: {
+                    include: {
+                        supplier: true,
+                        items: true
+                    }
+                },
                 deliveryChallans: {
                     include: {
-                        items: true
+                        items: {
+                            include: {
+                                fabricItem: true
+                            }
+                        }
                     }
                 },
                 fabricItems: {
@@ -126,8 +135,30 @@ export class JobcardService {
                 type: item.yarnName,
                 bags: item.bags,
                 weight: `${item.netWeight.toFixed(2)} Kg`,
+                netWeight: item.netWeight,
                 status: 'Received',
-                remarks: challan.remarks ?? ''
+                remarks: challan.remarks ?? '',
+                isUnassigned: !item.fabricItemId,
+                fabricItemId: item.fabricItemId,
+                customFabricItem: item.customFabricItem || null,
+                dia: item.dia
+            }))
+        );
+
+        // Flatten yarn return items into return rows
+        const yarnReturns = jobCard.yarnReturns.flatMap(challan =>
+            challan.items.map(item => ({
+                date: new Date(challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                dcNo: challan.dcNumber,
+                vehicleNumber: challan.vehicleNumber ?? '',
+                supplier: challan.supplier?.name || 'Unknown',
+                type: item.yarnName,
+                bags: item.bags,
+                weight: `${item.netWeight.toFixed(2)} Kg`,
+                netWeight: item.netWeight,
+                status: 'Returned',
+                remarks: challan.remarks ?? '',
+                fabricItemId: item.fabricItemId
             }))
         );
 
@@ -146,7 +177,9 @@ export class JobcardService {
                     vehicle: challan.vehicle,
                     rolls: item.rolls,
                     status: 'Dispatched',
-                    fabricType: item.fabricType
+                    dia: item.dia || item.fabricItem?.dia,
+                    fabricType: item.fabricType,
+                    fabricName: item.fabricName || (item.fabricItem ? `${item.fabricItem.composition} / ${item.fabricItem.gsm} GSM` : 'Unknown')
                 };
             })
         );
@@ -170,7 +203,8 @@ export class JobcardService {
                 bags: y.bags,
                 weight: `${y.netWeight.toFixed(2)} Kg`,
                 status: 'Received',
-                remarks: y.challan.remarks ?? ''
+                remarks: y.challan.remarks ?? '',
+                dia: y.dia
             }));
 
             let cumulative = 0;
@@ -185,8 +219,9 @@ export class JobcardService {
                     vehicle: d.challan.vehicle,
                     rolls: d.rolls,
                     status: 'Dispatched',
-                    dia: d.dia ?? item.dia,
-                    fabricType: d.fabricType
+                    dia: d.dia || item.dia,
+                    fabricType: d.fabricType,
+                    fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`
                 };
             });
 
@@ -225,6 +260,7 @@ export class JobcardService {
             totalYarnReceived,
             totalFabricDelivered,
             yarnInwardLogs,
+            yarnReturns,
             dispatchRecords,
             fabricItemSummaries,
             fabricItems: jobCard.fabricItems

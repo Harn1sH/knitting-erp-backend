@@ -5,9 +5,6 @@ export class CreateFabricItemDto {
   @IsNotEmpty()
   gsm: string;
 
-  @IsString()
-  dia: string;
-
   @IsNumber()
   rate: number;
 

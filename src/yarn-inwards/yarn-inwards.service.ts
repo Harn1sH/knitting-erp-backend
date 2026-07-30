@@ -105,6 +105,7 @@ export class YarnInwardsService {
                                 bags: item.bags,
                                 netWeight: item.netWeight,
                                 weightPerBag: item.weightPerBag,
+                                dia: item.dia ?? null,
                             })),
                         },
                     },

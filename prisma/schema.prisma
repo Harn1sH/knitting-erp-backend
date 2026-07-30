@@ -30,17 +30,15 @@ model DeliveryChallan {
 model DeliveryItem {
   id            String          @id @default(uuid())
   challanId     String
-  fabricItemId  String
+  fabricItemId  String?
   quantityKg    Float
   numberOfRolls Int?
-  weightPerRoll Float?
   fabricName    String?
   fabricType    String?
   rolls         Int
-  wtPerRoll     Float
   dia           String?
   challan       DeliveryChallan @relation(fields: [challanId], references: [id])
-  fabricItem    FabricItem      @relation(fields: [fabricItemId], references: [id])
+  fabricItem    FabricItem?     @relation(fields: [fabricItemId], references: [id])
 }
 
 model YarnInwardChallan {
@@ -69,6 +67,7 @@ model YarnInwardItem {
   weightPerBag     Float
   supplierId       String?
   customFabricItem String?
+  dia              String?
   challan          YarnInwardChallan @relation(fields: [challanId], references: [id])
   fabricItem       FabricItem?       @relation(fields: [fabricItemId], references: [id])
   supplier         Supplier?         @relation(fields: [supplierId], references: [id])
@@ -89,6 +88,7 @@ model JobCard {
   fabricItems        FabricItem[]
   productions        Production[]
   yarnInwardChallans YarnInwardChallan[]
+  yarnReturns        YarnReturn[]
 
   @@index([createdAt(sort: Desc)])
 }
@@ -146,6 +146,7 @@ model Supplier {
   remarks            String?
   yarnInwardChallans YarnInwardChallan[]
   yarnInwardItems    YarnInwardItem[]
+  yarnReturns        YarnReturn[]
 }
 
 model Client {
@@ -187,7 +188,7 @@ model FabricItem {
   id              String           @id @default(cuid())
   jobCardId       String
   gsm             String
-  dia             String
+  dia             String?
   count           String
   composition     String
   quality         String
@@ -200,6 +201,7 @@ model FabricItem {
   deliveryItems   DeliveryItem[]
   jobCard         JobCard          @relation(fields: [jobCardId], references: [id])
   yarnInwardItems YarnInwardItem[]
+  yarnReturnItems YarnReturnItem[]
 }
 
 model Employee {
@@ -228,4 +230,30 @@ model ProductionLog {
 enum Role {
   ADMIN
   EMPLOYEE
+}
+
+model YarnReturn {
+  id            String           @id @default(uuid())
+  dcNumber      String           @unique
+  jobCardId     String
+  supplierId    String
+  date          DateTime
+  vehicleNumber String?
+  remarks       String?
+  createdAt     DateTime         @default(now())
+  jobCard       JobCard          @relation(fields: [jobCardId], references: [id])
+  supplier      Supplier         @relation(fields: [supplierId], references: [id])
+  items         YarnReturnItem[]
+}
+
+model YarnReturnItem {
+  id           String      @id @default(uuid())
+  yarnReturnId String
+  fabricItemId String?
+  yarnName     String
+  bags         Int
+  netWeight    Float
+  weightPerBag Float
+  yarnReturn   YarnReturn  @relation(fields: [yarnReturnId], references: [id])
+  fabricItem   FabricItem? @relation(fields: [fabricItemId], references: [id])
 }

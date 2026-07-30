@@ -9,9 +9,10 @@ import { JobcardModule } from './jobcard/jobcard.module';
 import { MasterModule } from './master/master.module';
 import { YarnInwardsModule } from './yarn-inwards/yarn-inwards.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { YarnReturnsModule } from './yarn-returns/yarn-returns.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule],
+  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule, YarnReturnsModule],
   controllers: [AppController],
   providers: [AppService],
 })
