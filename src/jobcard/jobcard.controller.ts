@@ -34,4 +34,13 @@ export class JobcardController {
     getAllActiveJobCardNames(){
         return this.jobcardService.getAllActiveJobCardNames();
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('generate-invoice/:jobNumber')
+    generateInvoice(
+        @Param('jobNumber') jobNumber: string,
+        @Body() body: { rates: any }
+    ) {
+        return this.jobcardService.generateInvoice(jobNumber, body.rates);
+    }
 }

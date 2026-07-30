@@ -89,6 +89,9 @@ model JobCard {
   productions        Production[]
   yarnInwardChallans YarnInwardChallan[]
   yarnReturns        YarnReturn[]
+  invoiceNumber      String?
+  invoiceDate        DateTime?
+  invoiceRates       Json?
 
   @@index([createdAt(sort: Desc)])
 }
@@ -119,6 +122,11 @@ model User {
 }
 
 model JobCardCounter {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model InvoiceCounter {
   year       Int @id
   lastNumber Int @default(0)
 }

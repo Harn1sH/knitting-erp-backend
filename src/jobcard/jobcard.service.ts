@@ -116,6 +116,10 @@ export class JobcardService {
             throw new NotFoundException("No Job Card Found")
         }
 
+        const client = await this.prisma.client.findFirst({
+            where: { name: jobCard.customerName }
+        });
+
         // Global totals from all challan items
         const totalYarnReceived = jobCard.yarnInwardChallans.reduce(
             (sum, challan) => sum + challan.items.reduce((s, item) => s + item.netWeight, 0), 0
@@ -263,7 +267,63 @@ export class JobcardService {
             yarnReturns,
             dispatchRecords,
             fabricItemSummaries,
-            fabricItems: jobCard.fabricItems
+            fabricItems: jobCard.fabricItems,
+            clientAddress: client?.address || '',
+            clientGstNumber: client?.gstNumber || ''
+        };
+    }
+
+    async generateInvoice(jobNumber: string, rates: any) {
+        const fullYear = new Date().getFullYear();
+
+        const jobCard = await this.prisma.jobCard.findUnique({
+            where: { jobNumber },
+        });
+
+        if (!jobCard) {
+            throw new NotFoundException("No Job Card Found");
+        }
+
+        let newInvoiceNumber = jobCard.invoiceNumber;
+        let invoiceDate = jobCard.invoiceDate;
+
+        if (!newInvoiceNumber) {
+            const counter = await this.prisma.invoiceCounter.upsert({
+                where: { year: fullYear },
+                create: {
+                    year: fullYear,
+                    lastNumber: 1,
+                },
+                update: {
+                    lastNumber: {
+                        increment: 1,
+                    },
+                },
+            });
+
+            newInvoiceNumber = String(counter.lastNumber).padStart(3, "0");
+            invoiceDate = new Date();
+        }
+
+        const updatedJobCard = await this.prisma.jobCard.update({
+            where: { jobNumber },
+            data: {
+                invoiceNumber: newInvoiceNumber,
+                invoiceDate: invoiceDate,
+                invoiceRates: rates,
+            },
+        });
+
+        const client = await this.prisma.client.findFirst({
+            where: { name: jobCard.customerName }
+        });
+
+        return {
+            invoiceNumber: updatedJobCard.invoiceNumber,
+            invoiceDate: updatedJobCard.invoiceDate,
+            invoiceRates: updatedJobCard.invoiceRates,
+            clientAddress: client?.address || '',
+            clientGstNumber: client?.gstNumber || '',
         };
     }
 
@@ -276,7 +336,7 @@ export class JobcardService {
 
         const skip = (page - 1) * limit;
 
-        const [jobCards, total] = await this.prisma.$transaction([
+        const [jobCards, total] = await Promise.all([
             this.prisma.jobCard.findMany({ 
                 where,
                 include: {
