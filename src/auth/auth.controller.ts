@@ -13,9 +13,8 @@ export class AuthController {
     constructor(private authService: AuthService) { }
 
     @Get('hello')
-    async getHello(@Res() res: Response) {
-        res.status(200)
-        return { message: 'Hello World', statusCode: 200 };
+    async getHello() {
+        return 'Hello World';
     }
 
     @Post('login')
