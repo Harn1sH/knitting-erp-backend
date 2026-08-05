@@ -39,8 +39,8 @@ export class JobcardController {
     @Post('generate-invoice/:jobNumber')
     generateInvoice(
         @Param('jobNumber') jobNumber: string,
-        @Body() body: { rates: any }
+        @Body() body: { rates: any, selectedDcIds: string[] }
     ) {
-        return this.jobcardService.generateInvoice(jobNumber, body.rates);
+        return this.jobcardService.generateInvoice(jobNumber, body.rates, body.selectedDcIds);
     }
 }

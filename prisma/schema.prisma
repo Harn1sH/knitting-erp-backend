@@ -25,6 +25,8 @@ model DeliveryChallan {
   createdAt   DateTime       @default(now())
   jobCard     JobCard        @relation(fields: [jobCardId], references: [id])
   items       DeliveryItem[]
+  invoiceId   String?
+  invoice     Invoice?       @relation(fields: [invoiceId], references: [id])
 }
 
 model DeliveryItem {
@@ -89,6 +91,7 @@ model JobCard {
   productions        Production[]
   yarnInwardChallans YarnInwardChallan[]
   yarnReturns        YarnReturn[]
+  invoices           Invoice[]
   invoiceNumber      String?
   invoiceDate        DateTime?
   invoiceRates       Json?
@@ -264,4 +267,14 @@ model YarnReturnItem {
   weightPerBag Float
   yarnReturn   YarnReturn  @relation(fields: [yarnReturnId], references: [id])
   fabricItem   FabricItem? @relation(fields: [fabricItemId], references: [id])
+}
+
+model Invoice {
+  id               String            @id @default(uuid())
+  invoiceNumber    String            @unique
+  jobCardId        String
+  date             DateTime          @default(now())
+  rates            Json
+  jobCard          JobCard           @relation(fields: [jobCardId], references: [id])
+  deliveryChallans DeliveryChallan[]
 }

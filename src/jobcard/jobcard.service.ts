@@ -73,6 +73,7 @@ export class JobcardService {
                 jobNumber: jobNumber
             },
             include: {
+                invoices: true,
                 yarnInwardChallans: {
                     include: {
                         supplier: true,
@@ -174,6 +175,8 @@ export class JobcardService {
                 cumulativeDelivery += item.quantityKg;
                 const balance = totalOrderQuantity - cumulativeDelivery;
                 return {
+                    id: challan.id,
+                    invoiceId: challan.invoiceId,
                     date: new Date(challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     dcNo: challan.dcNo,
                     qty: `${item.quantityKg.toFixed(2)} Kg`,
@@ -216,6 +219,8 @@ export class JobcardService {
                 cumulative += d.quantityKg;
                 const balance = item.orderQuantity - cumulative;
                 return {
+                    id: d.challan.id,
+                    invoiceId: d.challan.invoiceId,
                     date: new Date(d.challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                     dcNo: d.challan.dcNo,
                     qty: `${d.quantityKg.toFixed(2)} Kg`,
@@ -273,9 +278,7 @@ export class JobcardService {
         };
     }
 
-    async generateInvoice(jobNumber: string, rates: any) {
-        const fullYear = new Date().getFullYear();
-
+    async generateInvoice(jobNumber: string, rates: any, selectedDcIds: string[]) {
         const jobCard = await this.prisma.jobCard.findUnique({
             where: { jobNumber },
         });
@@ -284,10 +287,31 @@ export class JobcardService {
             throw new NotFoundException("No Job Card Found");
         }
 
-        let newInvoiceNumber = jobCard.invoiceNumber;
-        let invoiceDate = jobCard.invoiceDate;
+        const existingDcs = await this.prisma.deliveryChallan.findMany({
+            where: { id: { in: selectedDcIds } }
+        });
+        const existingInvoiceId = existingDcs.find(dc => dc.invoiceId)?.invoiceId;
 
-        if (!newInvoiceNumber) {
+        let finalInvoiceNumber: string;
+        let finalInvoiceDate: Date;
+        let finalRates: any;
+
+        if (existingInvoiceId) {
+            const updatedInvoice = await this.prisma.invoice.update({
+                where: { id: existingInvoiceId },
+                data: { rates: rates }
+            });
+
+            await this.prisma.jobCard.update({
+                where: { jobNumber },
+                data: { invoiceRates: rates }
+            });
+
+            finalInvoiceNumber = updatedInvoice.invoiceNumber;
+            finalInvoiceDate = updatedInvoice.date;
+            finalRates = updatedInvoice.rates;
+        } else {
+            const fullYear = new Date().getFullYear();
             const counter = await this.prisma.invoiceCounter.upsert({
                 where: { year: fullYear },
                 create: {
@@ -301,27 +325,41 @@ export class JobcardService {
                 },
             });
 
-            newInvoiceNumber = String(counter.lastNumber).padStart(3, "0");
-            invoiceDate = new Date();
-        }
+            finalInvoiceNumber = String(counter.lastNumber).padStart(3, "0");
+            finalInvoiceDate = new Date();
 
-        const updatedJobCard = await this.prisma.jobCard.update({
-            where: { jobNumber },
-            data: {
-                invoiceNumber: newInvoiceNumber,
-                invoiceDate: invoiceDate,
-                invoiceRates: rates,
-            },
-        });
+            const newInvoice = await this.prisma.invoice.create({
+                data: {
+                    invoiceNumber: finalInvoiceNumber,
+                    jobCardId: jobCard.id,
+                    date: finalInvoiceDate,
+                    rates: rates,
+                    deliveryChallans: {
+                        connect: selectedDcIds.map(dcId => ({ id: dcId }))
+                    }
+                }
+            });
+
+            await this.prisma.jobCard.update({
+                where: { jobNumber },
+                data: {
+                    invoiceNumber: finalInvoiceNumber,
+                    invoiceDate: finalInvoiceDate,
+                    invoiceRates: rates,
+                },
+            });
+
+            finalRates = newInvoice.rates;
+        }
 
         const client = await this.prisma.client.findFirst({
             where: { name: jobCard.customerName }
         });
 
         return {
-            invoiceNumber: updatedJobCard.invoiceNumber,
-            invoiceDate: updatedJobCard.invoiceDate,
-            invoiceRates: updatedJobCard.invoiceRates,
+            invoiceNumber: finalInvoiceNumber,
+            invoiceDate: finalInvoiceDate,
+            invoiceRates: finalRates as any,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
         };
