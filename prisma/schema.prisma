@@ -21,6 +21,7 @@ model DeliveryChallan {
   jobCardId   String
   vehicle     String?
   companyName String?
+  partyDcNo   String?
   date        DateTime
   createdAt   DateTime       @default(now())
   jobCard     JobCard        @relation(fields: [jobCardId], references: [id])

@@ -45,6 +45,10 @@ export class CreateDeliveryChallanDto {
     @IsString()
     companyName?: string
 
+    @IsOptional()
+    @IsString()
+    partyDcNo?: string
+
     @IsDate()
     @Type(() => Date)
     date: Date

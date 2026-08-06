@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, Param } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { CreateDeliveryChallanDto } from 'src/dto/delivery/create-delivery-challan.dto';
 
@@ -14,5 +14,10 @@ export class DeliveryController {
     @Post('create-delivery')
     createDelivery(@Body() deliveryData: CreateDeliveryChallanDto) {
         return this.deliveryService.createDeliveryChallan(deliveryData);
+    }
+
+    @Patch(':id/party-dc')
+    updatePartyDcNo(@Param('id') id: string, @Body() data: { partyDcNo: string }) {
+        return this.deliveryService.updatePartyDcNo(id, data.partyDcNo);
     }
 }

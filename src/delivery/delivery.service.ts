@@ -127,6 +127,7 @@ export class DeliveryService {
                         jobCardId: jobCard.id,
                         vehicle: dto.vehicle ?? null,
                         companyName: dto.companyName ?? null,
+                        partyDcNo: dto.partyDcNo ?? null,
                         date: dto.date,
                         items: {
                             create: dto.items.map((item) => ({
@@ -153,5 +154,13 @@ export class DeliveryService {
                 timeout: 20000,
             },
         );
+    }
+
+    async updatePartyDcNo(id: string, partyDcNo: string) {
+        await this.prismaService.deliveryChallan.update({
+            where: { id },
+            data: { partyDcNo }
+        });
+        return { status: 200, message: "Party DC Number updated successfully" };
     }
 }
