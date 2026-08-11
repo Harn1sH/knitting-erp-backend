@@ -155,6 +155,7 @@ export class JobcardService {
             challan.items.map(item => ({
                 date: new Date(challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 dcNo: challan.dcNumber,
+                partyDcNumber: challan.partyDcNumber ?? '—',
                 vehicleNumber: challan.vehicleNumber ?? '',
                 supplier: challan.supplier?.name || 'Unknown',
                 type: item.yarnName,

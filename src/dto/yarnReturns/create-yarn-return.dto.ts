@@ -39,6 +39,10 @@ export class CreateYarnReturnDto {
 
     @IsOptional()
     @IsString()
+    partyDcNumber?: string;
+
+    @IsOptional()
+    @IsString()
     remarks?: string;
 
     @IsArray()

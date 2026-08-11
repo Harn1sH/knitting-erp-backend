@@ -21,13 +21,13 @@ model DeliveryChallan {
   jobCardId   String
   vehicle     String?
   companyName String?
-  partyDcNo   String?
   date        DateTime
   createdAt   DateTime       @default(now())
+  invoiceId   String?
+  partyDcNo   String?
+  invoice     Invoice?       @relation(fields: [invoiceId], references: [id])
   jobCard     JobCard        @relation(fields: [jobCardId], references: [id])
   items       DeliveryItem[]
-  invoiceId   String?
-  invoice     Invoice?       @relation(fields: [invoiceId], references: [id])
 }
 
 model DeliveryItem {
@@ -37,9 +37,9 @@ model DeliveryItem {
   quantityKg    Float
   numberOfRolls Int?
   fabricName    String?
-  fabricType    String?
   rolls         Int
   dia           String?
+  fabricType    String?
   challan       DeliveryChallan @relation(fields: [challanId], references: [id])
   fabricItem    FabricItem?     @relation(fields: [fabricItemId], references: [id])
 }
@@ -87,15 +87,15 @@ model JobCard {
   machine            String
   machineNote        String
   jobReceivedDate    DateTime            @default(now())
+  invoiceDate        DateTime?
+  invoiceNumber      String?
+  invoiceRates       Json?
   deliveryChallans   DeliveryChallan[]
   fabricItems        FabricItem[]
+  invoices           Invoice[]
   productions        Production[]
   yarnInwardChallans YarnInwardChallan[]
   yarnReturns        YarnReturn[]
-  invoices           Invoice[]
-  invoiceNumber      String?
-  invoiceDate        DateTime?
-  invoiceRates       Json?
 
   @@index([createdAt(sort: Desc)])
 }
@@ -239,11 +239,6 @@ model ProductionLog {
   Employee       Employee @relation(fields: [employeeId], references: [id])
 }
 
-enum Role {
-  ADMIN
-  EMPLOYEE
-}
-
 model YarnReturn {
   id            String           @id @default(uuid())
   dcNumber      String           @unique
@@ -251,6 +246,7 @@ model YarnReturn {
   supplierId    String
   date          DateTime
   vehicleNumber String?
+  partyDcNumber String?
   remarks       String?
   createdAt     DateTime         @default(now())
   jobCard       JobCard          @relation(fields: [jobCardId], references: [id])
@@ -266,8 +262,8 @@ model YarnReturnItem {
   bags         Int
   netWeight    Float
   weightPerBag Float
-  yarnReturn   YarnReturn  @relation(fields: [yarnReturnId], references: [id])
   fabricItem   FabricItem? @relation(fields: [fabricItemId], references: [id])
+  yarnReturn   YarnReturn  @relation(fields: [yarnReturnId], references: [id])
 }
 
 model Invoice {
@@ -276,6 +272,11 @@ model Invoice {
   jobCardId        String
   date             DateTime          @default(now())
   rates            Json
-  jobCard          JobCard           @relation(fields: [jobCardId], references: [id])
   deliveryChallans DeliveryChallan[]
+  jobCard          JobCard           @relation(fields: [jobCardId], references: [id])
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
 }

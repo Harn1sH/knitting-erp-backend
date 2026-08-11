@@ -47,6 +47,7 @@ export class YarnReturnsService {
                         supplierId: dto.supplierId,
                         date: new Date(dto.date),
                         vehicleNumber: dto.vehicleNumber ?? null,
+                        partyDcNumber: dto.partyDcNumber ?? null,
                         remarks: dto.remarks ?? null,
                         items: {
                             create: dto.items.map((item) => ({
