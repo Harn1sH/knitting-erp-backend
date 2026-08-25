@@ -217,26 +217,27 @@ model FabricItem {
 }
 
 model Employee {
-  id            String          @id
-  name          String
-  phone         String?
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  ProductionLog ProductionLog[]
+  id             String          @id @default(cuid())
+  name           String
+  phone          String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  productionLogs ProductionLog[]
 }
 
 model ProductionLog {
-  id             String   @id
+  id             String   @id @default(cuid())
   employeeId     String
   fabricType     String
   dia            String
   rollsCompleted Int
   weight         Float
   date           DateTime
+  shift          Shift    @default(DAY)
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
-  Employee       Employee @relation(fields: [employeeId], references: [id])
+  updatedAt      DateTime @updatedAt
+  employee       Employee @relation(fields: [employeeId], references: [id])
 }
 
 model YarnReturn {
@@ -279,4 +280,9 @@ model Invoice {
 enum Role {
   ADMIN
   EMPLOYEE
+}
+
+enum Shift {
+  DAY
+  NIGHT
 }
