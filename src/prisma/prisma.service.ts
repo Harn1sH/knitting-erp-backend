@@ -14,7 +14,12 @@ export class PrismaService
             throw new Error('DATABASE_URL is missing');
         }
 
-        const pool = new Pool({ connectionString });
+        const pool = new Pool({ 
+            connectionString, 
+            max: 15,
+            idleTimeoutMillis: 600000, // keep alive for 10 minutes
+            connectionTimeoutMillis: 20000 // 20s timeout
+        });
         const adapter = new PrismaPg(pool as any); // using any in case of type mismatch
 
         super({ adapter });

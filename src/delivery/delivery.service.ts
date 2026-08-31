@@ -137,6 +137,8 @@ export class DeliveryService {
                                 fabricName: item.fabricName ?? null,
                                 fabricType: item.fabricType ?? null,
                                 dia: item.dia ?? null,
+                                gg: item.gg ?? null,
+                                ll: item.ll ?? null,
                                 rolls: item.rolls,
                             })),
                         },

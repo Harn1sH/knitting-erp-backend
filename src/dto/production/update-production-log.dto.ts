@@ -4,6 +4,10 @@ import { Shift } from "./create-production-log.dto";
 export class UpdateProductionLogDto {
     @IsString()
     @IsOptional()
+    jobCardId?: string;
+
+    @IsString()
+    @IsOptional()
     employeeId?: string;
 
     @IsString()

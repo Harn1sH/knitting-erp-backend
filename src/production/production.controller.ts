@@ -40,8 +40,9 @@ export class ProductionController {
         @Query('startDate') startDate?: string,
         @Query('endDate') endDate?: string,
         @Query('employeeId') employeeId?: string,
+        @Query('jobCardId') jobCardId?: string,
     ) {
-        return this.productionService.getLogs(startDate, endDate, employeeId);
+        return this.productionService.getLogs(startDate, endDate, employeeId, jobCardId);
     }
 
     @Patch("logs/:id")
@@ -60,7 +61,13 @@ export class ProductionController {
         @Query('year') year?: string,
         @Query('month') month?: string,
         @Query('week') week?: string,
+        @Query('jobCardId') jobCardId?: string,
     ) {
-        return this.productionService.getSummary(period, year, month, week);
+        return this.productionService.getSummary(period, year, month, week, jobCardId);
+    }
+
+    @Get("job-cards-summary")
+    getJobCardsWithProduction() {
+        return this.productionService.getJobCardsWithProduction();
     }
 }

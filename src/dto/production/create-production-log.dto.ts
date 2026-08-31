@@ -7,6 +7,10 @@ export enum Shift {
 
 export class CreateProductionLogDto {
     @IsString()
+    @IsOptional()
+    jobCardId?: string;
+
+    @IsString()
     employeeId: string;
 
     @IsString()

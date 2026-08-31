@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters", "fullTextSearch"]
 }
 
 datasource db {
@@ -28,6 +29,10 @@ model DeliveryChallan {
   invoice     Invoice?       @relation(fields: [invoiceId], references: [id])
   jobCard     JobCard        @relation(fields: [jobCardId], references: [id])
   items       DeliveryItem[]
+
+  @@index([jobCardId])
+  @@index([invoiceId])
+  @@index([date])
 }
 
 model DeliveryItem {
@@ -40,8 +45,13 @@ model DeliveryItem {
   rolls         Int
   dia           String?
   fabricType    String?
+  gg            Float?
+  ll            Float?
   challan       DeliveryChallan @relation(fields: [challanId], references: [id])
   fabricItem    FabricItem?     @relation(fields: [fabricItemId], references: [id])
+
+  @@index([challanId])
+  @@index([fabricItemId])
 }
 
 model YarnInwardChallan {
@@ -57,6 +67,10 @@ model YarnInwardChallan {
   jobCard       JobCard          @relation(fields: [jobCardId], references: [id])
   supplier      Supplier         @relation(fields: [supplierId], references: [id])
   items         YarnInwardItem[]
+
+  @@index([jobCardId])
+  @@index([supplierId])
+  @@index([entryDate])
 }
 
 model YarnInwardItem {
@@ -74,6 +88,10 @@ model YarnInwardItem {
   challan          YarnInwardChallan @relation(fields: [challanId], references: [id])
   fabricItem       FabricItem?       @relation(fields: [fabricItemId], references: [id])
   supplier         Supplier?         @relation(fields: [supplierId], references: [id])
+
+  @@index([challanId])
+  @@index([fabricItemId])
+  @@index([supplierId])
 }
 
 model JobCard {
@@ -94,6 +112,7 @@ model JobCard {
   fabricItems        FabricItem[]
   invoices           Invoice[]
   productions        Production[]
+  productionLogs     ProductionLog[]
   yarnInwardChallans YarnInwardChallan[]
   yarnReturns        YarnReturn[]
 
@@ -111,6 +130,10 @@ model Production {
   date       DateTime
   jobCard    JobCard  @relation(fields: [jobCardId], references: [id])
   operator   User?    @relation(fields: [operatorId], references: [id])
+
+  @@index([jobCardId])
+  @@index([operatorId])
+  @@index([date])
 }
 
 model User {
@@ -182,6 +205,9 @@ model Client {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([name])
+  @@index([isActive])
 }
 
 model MasterEntry {
@@ -194,6 +220,8 @@ model MasterEntry {
   updatedAt   DateTime @updatedAt
 
   @@unique([category, name])
+  @@index([category])
+  @@index([name])
 }
 
 model FabricItem {
@@ -214,6 +242,8 @@ model FabricItem {
   jobCard         JobCard          @relation(fields: [jobCardId], references: [id])
   yarnInwardItems YarnInwardItem[]
   yarnReturnItems YarnReturnItem[]
+
+  @@index([jobCardId])
 }
 
 model Employee {
@@ -228,6 +258,7 @@ model Employee {
 
 model ProductionLog {
   id             String   @id @default(cuid())
+  jobCardId      String?
   employeeId     String
   fabricType     String
   dia            String
@@ -238,6 +269,12 @@ model ProductionLog {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   employee       Employee @relation(fields: [employeeId], references: [id])
+  jobCard        JobCard? @relation(fields: [jobCardId], references: [id])
+
+  @@index([employeeId])
+  @@index([jobCardId])
+  @@index([date])
+  @@index([shift])
 }
 
 model YarnReturn {
@@ -253,6 +290,10 @@ model YarnReturn {
   jobCard       JobCard          @relation(fields: [jobCardId], references: [id])
   supplier      Supplier         @relation(fields: [supplierId], references: [id])
   items         YarnReturnItem[]
+
+  @@index([jobCardId])
+  @@index([supplierId])
+  @@index([date])
 }
 
 model YarnReturnItem {
@@ -265,6 +306,9 @@ model YarnReturnItem {
   weightPerBag Float
   fabricItem   FabricItem? @relation(fields: [fabricItemId], references: [id])
   yarnReturn   YarnReturn  @relation(fields: [yarnReturnId], references: [id])
+
+  @@index([yarnReturnId])
+  @@index([fabricItemId])
 }
 
 model Invoice {
@@ -275,6 +319,9 @@ model Invoice {
   rates            Json
   deliveryChallans DeliveryChallan[]
   jobCard          JobCard           @relation(fields: [jobCardId], references: [id])
+
+  @@index([jobCardId])
+  @@index([date])
 }
 
 enum Role {

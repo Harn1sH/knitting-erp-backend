@@ -68,70 +68,81 @@ export class JobcardService {
     }
 
     async getJobCard(jobNumber: string) {
-        const jobCard = await this.prisma.jobCard.findUnique({
-            where: {
-                jobNumber: jobNumber
-            },
-            include: {
-                invoices: true,
-                yarnInwardChallans: {
-                    include: {
-                        supplier: true,
-                        items: true
-                    }
-                },
-                yarnReturns: {
-                    include: {
-                        supplier: true,
-                        items: true
-                    }
-                },
-                deliveryChallans: {
-                    include: {
-                        items: {
-                            include: {
-                                fabricItem: true
-                            }
-                        }
-                    }
-                },
-                fabricItems: {
-                    include: {
-                        yarnInwardItems: {
-                            include: {
-                                challan: { include: { supplier: true } },
-                                supplier: true
-                            }
-                        },
-                        deliveryItems: {
-                            include: {
-                                challan: true
-                            }
-                        }
-                    }
-                }
-            }
-        })
+        console.time('getJobCard');
+        
+        console.time('promiseAll');
+        const [jobCardData, yarnInwardChallans, yarnReturnsData, deliveryChallans, _client] = await Promise.all([
+            this.prisma.jobCard.findUnique({
+                where: { jobNumber },
+                include: { invoices: true, fabricItems: true }
+            }),
+            this.prisma.yarnInwardChallan.findMany({
+                where: { jobCard: { jobNumber } },
+                include: { supplier: true, items: true }
+            }),
+            this.prisma.yarnReturn.findMany({
+                where: { jobCard: { jobNumber } },
+                include: { supplier: true, items: true }
+            }),
+            this.prisma.deliveryChallan.findMany({
+                where: { jobCard: { jobNumber } },
+                include: { items: true }
+            }),
+            // Client is tricky since it needs customerName, we will fetch it after
+            Promise.resolve(null)
+        ]);
+        console.timeEnd('promiseAll');
 
-        if (!jobCard) {
-            throw new NotFoundException("No Job Card Found")
+        if (!jobCardData) {
+            throw new NotFoundException("No Job Card Found");
         }
 
         const client = await this.prisma.client.findFirst({
-            where: { name: jobCard.customerName }
+            where: { name: jobCardData.customerName }
         });
+
+        const jobCard: any = {
+            ...jobCardData,
+            yarnInwardChallans,
+            yarnReturns: yarnReturnsData,
+            deliveryChallans,
+            fabricItems: jobCardData.fabricItems
+        };
+
+        const yarnItemsByFabric = new Map<string, any[]>();
+        const deliveryItemsByFabric = new Map<string, any[]>();
+
+        for (const challan of yarnInwardChallans) {
+            for (const item of challan.items) {
+                if (item.fabricItemId) {
+                    const arr = yarnItemsByFabric.get(item.fabricItemId) || [];
+                    arr.push({ ...item, challan });
+                    yarnItemsByFabric.set(item.fabricItemId, arr);
+                }
+            }
+        }
+
+        for (const challan of deliveryChallans) {
+            for (const item of challan.items) {
+                if (item.fabricItemId) {
+                    const arr = deliveryItemsByFabric.get(item.fabricItemId) || [];
+                    arr.push({ ...item, challan });
+                    deliveryItemsByFabric.set(item.fabricItemId, arr);
+                }
+            }
+        }
 
         // Global totals from all challan items
         const totalYarnReceived = jobCard.yarnInwardChallans.reduce(
-            (sum, challan) => sum + challan.items.reduce((s, item) => s + item.netWeight, 0), 0
+            (sum: number, challan: any) => sum + challan.items.reduce((s: number, item: any) => s + item.netWeight, 0), 0
         );
         const totalFabricDelivered = jobCard.deliveryChallans.reduce(
-            (sum, challan) => sum + challan.items.reduce((s, item) => s + item.quantityKg, 0), 0
+            (sum: number, challan: any) => sum + challan.items.reduce((s: number, item: any) => s + item.quantityKg, 0), 0
         );
 
         // Flatten yarn inward challan items into log rows
-        const yarnInwardLogs = jobCard.yarnInwardChallans.flatMap(challan =>
-            challan.items.map(item => ({
+        const yarnInwardLogs = jobCard.yarnInwardChallans.flatMap((challan: any) =>
+            challan.items.map((item: any) => ({
                 date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 grnNo: challan.grnNo,
                 partyDcNumber: challan.partyDcNumber ?? '—',
@@ -151,8 +162,8 @@ export class JobcardService {
         );
 
         // Flatten yarn return items into return rows
-        const yarnReturns = jobCard.yarnReturns.flatMap(challan =>
-            challan.items.map(item => ({
+        const yarnReturns = jobCard.yarnReturns.flatMap((challan: any) =>
+            challan.items.map((item: any) => ({
                 date: new Date(challan.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 dcNo: challan.dcNumber,
                 partyDcNumber: challan.partyDcNumber ?? '—',
@@ -168,13 +179,17 @@ export class JobcardService {
             }))
         );
 
-        // Flatten delivery challan items into dispatch rows
         let cumulativeDelivery = 0;
-        const totalOrderQuantity = jobCard.fabricItems.reduce((sum, item) => sum + item.orderQuantity, 0);
-        const dispatchRecords = jobCard.deliveryChallans.flatMap(challan =>
-            challan.items.map(item => {
+        const totalOrderQuantity = jobCard.fabricItems.reduce((sum: number, item: any) => sum + (item.orderQuantity || 0), 0);
+        
+        const fabricItemsMap = new Map(jobCard.fabricItems.map((f: any) => [f.id, f]));
+
+        const dispatchRecords = jobCard.deliveryChallans.flatMap((challan: any) =>
+            challan.items.map((item: any) => {
                 cumulativeDelivery += item.quantityKg;
                 const balance = totalOrderQuantity - cumulativeDelivery;
+                const relatedFabricItem = (item.fabricItemId ? fabricItemsMap.get(item.fabricItemId) : null) as any;
+                
                 return {
                     id: challan.id,
                     invoiceId: challan.invoiceId,
@@ -186,23 +201,28 @@ export class JobcardService {
                     vehicle: challan.vehicle,
                     rolls: item.rolls,
                     status: 'Dispatched',
-                    dia: item.dia || item.fabricItem?.dia,
+                    dia: item.dia || relatedFabricItem?.dia,
+                    gg: item.gg,
+                    ll: item.ll,
                     fabricType: item.fabricType,
-                    fabricName: item.fabricName || (item.fabricItem ? `${item.fabricItem.composition} / ${item.fabricItem.gsm} GSM` : 'Unknown')
+                    fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown')
                 };
             })
         );
 
         // Per-fabric-item summaries
-        const fabricItemSummaries = jobCard.fabricItems.map(item => {
+        const fabricItemSummaries = jobCardData.fabricItems.map(item => {
+            const yarnItems = yarnItemsByFabric.get(item.id) || [];
+            const deliveryItems = deliveryItemsByFabric.get(item.id) || [];
+
             const totalYarnReceived = Math.round(
-                item.yarnInwardItems.reduce((sum, y) => sum + y.netWeight, 0) * 1000
+                yarnItems.reduce((sum, y) => sum + y.netWeight, 0) * 1000
             ) / 1000;
             const totalFabricDelivered = Math.round(
-                item.deliveryItems.reduce((sum, d) => sum + d.quantityKg, 0) * 1000
+                deliveryItems.reduce((sum, d) => sum + d.quantityKg, 0) * 1000
             ) / 1000;
 
-            const yarnInwardLogs = item.yarnInwardItems.map(y => ({
+            const yarnInwardLogs = yarnItems.map(y => ({
                 date: new Date(y.challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
                 grnNo: y.challan.grnNo,
                 partyDcNumber: y.challan.partyDcNumber ?? '—',
@@ -217,7 +237,7 @@ export class JobcardService {
             }));
 
             let cumulative = 0;
-            const dispatchRecords = item.deliveryItems.map(d => {
+            const dispatchRecords = deliveryItems.map(d => {
                 cumulative += d.quantityKg;
                 const balance = item.orderQuantity - cumulative;
                 return {
@@ -232,17 +252,17 @@ export class JobcardService {
                     rolls: d.rolls,
                     status: 'Dispatched',
                     dia: d.dia || item.dia,
+                    gg: d.gg,
+                    ll: d.ll,
                     fabricType: d.fabricType,
                     fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`
                 };
             });
 
             // Derive last-used supplier for this fabric item (from the most recent yarn inward)
-            const lastYarnInward = item.yarnInwardItems.length > 0
-                ? item.yarnInwardItems[item.yarnInwardItems.length - 1]
-                : null;
-            const lastSupplierId = lastYarnInward?.supplierId ?? lastYarnInward?.challan?.supplierId ?? null;
-            const lastSupplierName = lastYarnInward?.supplier?.name ?? lastYarnInward?.challan?.supplier?.name ?? null;
+            const lastYarnInward = yarnItems.length > 0 ? yarnItems[yarnItems.length - 1] : null;
+            const lastSupplierId = lastYarnInward?.challan?.supplierId ?? null;
+            const lastSupplierName = lastYarnInward?.challan?.supplier?.name ?? null;
 
             return {
                 id: item.id,
@@ -267,17 +287,30 @@ export class JobcardService {
             };
         });
 
+        // Determine Final Invoice details from the single (or latest) invoice
+        const invoice = jobCardData.invoices.length > 0 ? jobCardData.invoices[jobCardData.invoices.length - 1] : null;
+        let finalInvoiceNumber = invoice?.invoiceNumber || null;
+        let finalInvoiceDate = invoice?.date || null;
+        if (jobCardData.invoices?.length > 0) {
+            finalInvoiceNumber = jobCardData.invoices.map((inv: any) => inv.invoiceNumber).join(', ');
+            finalInvoiceDate = jobCardData.invoices[0].date;
+        };
+        let finalRates = invoice?.rates || {};
+
         return {
-            ...jobCard,
+            ...jobCardData,
             totalYarnReceived,
             totalFabricDelivered,
             yarnInwardLogs,
             yarnReturns,
             dispatchRecords,
+            fabricItems: jobCardData.fabricItems,
             fabricItemSummaries,
-            fabricItems: jobCard.fabricItems,
             clientAddress: client?.address || '',
-            clientGstNumber: client?.gstNumber || ''
+            clientGstNumber: client?.gstNumber || '',
+            invoiceNumber: finalInvoiceNumber,
+            invoiceDate: finalInvoiceDate,
+            invoiceRates: finalRates as any
         };
     }
 
@@ -377,20 +410,19 @@ export class JobcardService {
 
         const skip = (page - 1) * limit;
 
-        const [jobCards, total] = await Promise.all([
-            this.prisma.jobCard.findMany({ 
-                where,
-                include: {
-                    fabricItems: true
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                },
-                skip,
-                take: limit,
-            }),
-            this.prisma.jobCard.count({ where })
-        ]);
+        const jobCards = await this.prisma.jobCard.findMany({ 
+            where,
+            include: {
+                fabricItems: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            skip,
+            take: limit,
+        });
+        
+        const total = await this.prisma.jobCard.count({ where });
 
         const data = jobCards.map(job => {
             return {

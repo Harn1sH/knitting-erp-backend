@@ -7,23 +7,25 @@ export class DashboardService {
     constructor(private readonly prisma:PrismaService){}
     
     async getDashboard(){
-        const totalCount = await this.prisma.jobCard.count()
-        const activeJob = await this.prisma.jobCard.findMany({
-            where:{
-                status:{
-                    equals:"IN_PROGRESS"
+        const totalCount = await this.prisma.jobCard.count();
+        
+        const activeJobCount = await this.prisma.jobCard.count({
+            where: {
+                status: {
+                    equals: "IN_PROGRESS"
                 }
             }
-        })
+        });
+        
         const recentJobCard = await this.prisma.jobCard.findMany({
-            take:5,
-            orderBy:{
-                createdAt:"desc"
+            take: 5,
+            orderBy: {
+                createdAt: "desc"
             },
             include: {
                 fabricItems: true
             }
-        })
+        });
 
         const formattedRecentJobCards = recentJobCard.map(job => ({
             ...job,
@@ -34,7 +36,7 @@ export class DashboardService {
 
         return {
             totalCount,
-            activeJob: activeJob.length,
+            activeJob: activeJobCount,
             recentJobCard: formattedRecentJobCards
         }
     }

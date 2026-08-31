@@ -23,13 +23,20 @@ export class DeliveryItemDto {
     @IsString()
     fabricType?: string
 
-    @IsOptional()
     @IsString()
-    dia?: string
+    dia: string
 
     @IsInt()
     @Type(() => Number)
     rolls: number
+
+    @IsNumber()
+    @Type(() => Number)
+    gg: number
+
+    @IsNumber()
+    @Type(() => Number)
+    ll: number
 }
 
 export class CreateDeliveryChallanDto {
@@ -37,17 +44,15 @@ export class CreateDeliveryChallanDto {
     @Type(() => String)
     jobCardId: string
 
-    @IsOptional()
     @IsString()
-    vehicle?: string
+    vehicle: string
 
     @IsOptional()
     @IsString()
     companyName?: string
 
-    @IsOptional()
     @IsString()
-    partyDcNo?: string
+    partyDcNo: string
 
     @IsDate()
     @Type(() => Date)

@@ -56,11 +56,12 @@ export class ProductionService {
             });
             return { status: 200, message: "Production log created successfully", data: log };
         } catch (error) {
+            console.error("Error creating production log:", error);
             return { status: 400, message: "Failed to create production log" };
         }
     }
 
-    async getLogs(startDate?: string, endDate?: string, employeeId?: string) {
+    async getLogs(startDate?: string, endDate?: string, employeeId?: string, jobCardId?: string) {
         try {
             const whereClause: Prisma.ProductionLogWhereInput = {};
             
@@ -71,6 +72,9 @@ export class ProductionService {
             }
             if (employeeId) {
                 whereClause.employeeId = employeeId;
+            }
+            if (jobCardId) {
+                whereClause.jobCardId = jobCardId;
             }
 
             const logs = await this.prisma.productionLog.findMany({
@@ -112,51 +116,129 @@ export class ProductionService {
         }
     }
 
-    async getSummary(period: 'day' | 'week' | 'month', year?: string, month?: string, week?: string) {
+    async getSummary(period: 'day' | 'week' | 'month', year?: string, month?: string, week?: string, jobCardId?: string) {
         try {
-            // Simplified summary calculation. In a real scenario we'd do Prisma aggregation
-            const logs = await this.prisma.productionLog.findMany({
-                include: { employee: true }
-            });
+            let startDate: Date;
+            let endDate: Date;
+            const now = new Date();
             
-            // For now, return basic group-by logic just to fulfill the API structure
-            // In a production app, we would use raw SQL or Prisma group-by for efficiency
-            let periodStr = "All";
-            let totalRolls = 0;
-            let totalWeight = 0;
-            
-            const employeeMap = new Map();
-            
-            logs.forEach(log => {
-                totalRolls += log.rollsCompleted;
-                totalWeight += log.weight;
-                
-                const emp = log.employee;
-                if (!employeeMap.has(emp.id)) {
-                    employeeMap.set(emp.id, {
-                        employeeId: emp.id,
-                        employeeName: emp.name,
-                        rolls: 0,
-                        weight: 0
-                    });
+            if (period === 'day') {
+                startDate = new Date(now.setHours(0, 0, 0, 0));
+                endDate = new Date(now.setHours(23, 59, 59, 999));
+            } else if (period === 'month') {
+                const y = year ? parseInt(year) : now.getFullYear();
+                const m = month ? parseInt(month) - 1 : now.getMonth();
+                startDate = new Date(y, m, 1);
+                endDate = new Date(y, m + 1, 0, 23, 59, 59, 999);
+            } else {
+                // week or default
+                const y = year ? parseInt(year) : now.getFullYear();
+                const currentDay = now.getDay();
+                const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
+                startDate = new Date(now.setDate(diff));
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 6);
+                endDate.setHours(23, 59, 59, 999);
+            }
+
+            const whereClause: Prisma.ProductionLogWhereInput = {
+                date: {
+                    gte: startDate,
+                    lte: endDate
                 }
-                const empData = employeeMap.get(emp.id);
-                empData.rolls += log.rollsCompleted;
-                empData.weight += log.weight;
+            };
+            
+            if (jobCardId) {
+                whereClause.jobCardId = jobCardId;
+            }
+
+            const aggregateResult = await this.prisma.productionLog.aggregate({
+                where: whereClause,
+                _sum: { rollsCompleted: true, weight: true },
+                _count: { id: true }
             });
+            
+            const groupByResult = await this.prisma.productionLog.groupBy({
+                by: ['employeeId', 'shift'],
+                where: whereClause,
+                _sum: { rollsCompleted: true, weight: true }
+            });
+
+            const employeeIds = groupByResult.map(g => g.employeeId);
+            const employees = await this.prisma.employee.findMany({
+                where: { id: { in: employeeIds } }
+            });
+
+            const employeeMap = new Map(employees.map(e => [e.id, e.name]));
+
+            const employeesSummary = groupByResult.map(g => ({
+                employeeId: g.employeeId,
+                employeeName: employeeMap.get(g.employeeId) || 'Unknown',
+                shift: g.shift,
+                rolls: g._sum.rollsCompleted || 0,
+                weight: g._sum.weight || 0
+            }));
 
             return {
                 status: 200,
                 data: [{
-                    period: periodStr,
-                    totalRolls,
-                    totalWeight,
-                    entryCount: logs.length,
-                    employees: Array.from(employeeMap.values())
+                    period: period,
+                    totalRolls: aggregateResult._sum.rollsCompleted || 0,
+                    totalWeight: aggregateResult._sum.weight || 0,
+                    entryCount: aggregateResult._count.id,
+                    employees: employeesSummary
                 }]
             };
         } catch (error) {
             return { status: 400, message: "Failed to fetch production summary" };
+        }
+    }
+
+    async getJobCardsWithProduction() {
+        try {
+            const groupByResult = await this.prisma.productionLog.groupBy({
+                by: ['jobCardId'],
+                where: {
+                    jobCardId: { not: null }
+                },
+                _sum: {
+                    rollsCompleted: true,
+                    weight: true
+                },
+                _max: {
+                    date: true
+                }
+            });
+            
+            const jobCardIds = groupByResult.map(g => g.jobCardId as string);
+            const jobCards = await this.prisma.jobCard.findMany({
+                where: { id: { in: jobCardIds } }
+            });
+            const jobCardMap = new Map(jobCards.map(j => [j.id, j]));
+
+            const result = groupByResult.map(g => {
+                const jc = jobCardMap.get(g.jobCardId as string);
+                return {
+                    jobCardId: g.jobCardId,
+                    jobNumber: jc?.jobNumber,
+                    customerName: jc?.customerName,
+                    totalRolls: g._sum.rollsCompleted || 0,
+                    totalWeight: g._sum.weight || 0,
+                    lastProductionDate: g._max.date
+                };
+            });
+
+            // Sort by latest production date descending
+            result.sort((a, b) => {
+                const dateA = a.lastProductionDate ? new Date(a.lastProductionDate).getTime() : 0;
+                const dateB = b.lastProductionDate ? new Date(b.lastProductionDate).getTime() : 0;
+                return dateB - dateA;
+            });
+
+            return { status: 200, data: result };
+        } catch (error) {
+            return { status: 400, message: "Failed to fetch job cards production summary" };
         }
     }
 }
