@@ -71,7 +71,7 @@ export class JobcardService {
         console.time('getJobCard');
         
         console.time('promiseAll');
-        const [jobCardData, yarnInwardChallans, yarnReturnsData, deliveryChallans, _client] = await Promise.all([
+        const [jobCardData, yarnInwardChallans, yarnReturnsData, deliveryChallans, stockTransfersIn, stockTransfersOut] = await Promise.all([
             this.prisma.jobCard.findUnique({
                 where: { jobNumber },
                 include: { invoices: true, fabricItems: true }
@@ -88,8 +88,15 @@ export class JobcardService {
                 where: { jobCard: { jobNumber } },
                 include: { items: true }
             }),
-            // Client is tricky since it needs customerName, we will fetch it after
-            Promise.resolve(null)
+            this.prisma.yarnStockLedger.findMany({
+                where: { sourceJobCard: { jobNumber }, type: 'IN' }
+            }),
+            this.prisma.yarnStockLedger.findMany({
+                where: { targetJobCard: { jobNumber }, type: 'OUT' },
+                include: {
+                    linkedChallan: { include: { supplier: true } }
+                }
+            })
         ]);
         console.timeEnd('promiseAll');
 
@@ -141,25 +148,74 @@ export class JobcardService {
         );
 
         // Flatten yarn inward challan items into log rows
-        const yarnInwardLogs = jobCard.yarnInwardChallans.flatMap((challan: any) =>
-            challan.items.map((item: any) => ({
-                date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                grnNo: challan.grnNo,
-                partyDcNumber: challan.partyDcNumber ?? '—',
-                vehicleNumber: challan.vehicleNumber ?? '',
-                supplier: challan.supplier?.name || 'Unknown',
-                type: item.yarnName,
-                bags: item.bags,
-                weight: `${item.netWeight.toFixed(2)} Kg`,
-                netWeight: item.netWeight,
-                status: 'Received',
-                remarks: challan.remarks ?? '',
-                isUnassigned: !item.fabricItemId,
-                fabricItemId: item.fabricItemId,
-                customFabricItem: item.customFabricItem || null,
-                dia: item.dia
-            }))
+        const yarnInwardLogs: any[] = jobCard.yarnInwardChallans.flatMap((challan: any) =>
+            challan.items.map((item: any) => {
+                // Compute how much of this item was transferred to stock
+                const stockTransfersForThisItem = stockTransfersIn.filter((st: any) => 
+                    st.linkedChallanId === challan.id && 
+                    st.yarnName === item.yarnName && 
+                    (st.color || null) === (item.color || null) && 
+                    (st.dia || null) === (item.dia || null)
+                );
+                const transferredWeight = stockTransfersForThisItem.reduce((sum, st: any) => sum + st.netWeight, 0);
+                const transferredBags = stockTransfersForThisItem.reduce((sum, st: any) => sum + st.bags, 0);
+
+                return {
+                    id: item.id,
+                    challanId: challan.id,
+                    date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    grnNo: challan.grnNo,
+                    partyDcNumber: challan.partyDcNumber ?? '—',
+                    vehicleNumber: challan.vehicleNumber ?? '',
+                    supplier: challan.supplier?.name || 'Unknown',
+                    type: item.yarnName,
+                    color: item.color,
+                    bags: item.bags,
+                    weight: item.netWeight,
+                    netWeight: item.netWeight,
+                    transferredWeight,
+                    transferredBags,
+                    availableWeight: item.netWeight - transferredWeight,
+                    status: 'Received',
+                    remarks: challan.remarks ?? '',
+                    isUnassigned: !item.fabricItemId,
+                    fabricItemId: item.fabricItemId,
+                    customFabricItem: item.customFabricItem || null,
+                    dia: item.dia,
+                    isFromStock: false
+                };
+            })
         );
+
+        // Add yarn received from stock
+        const stockLogs = stockTransfersOut.map((st: any) => ({
+            id: st.id,
+            date: new Date(st.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            grnNo: st.linkedChallan?.grnNo || 'Stock Transfer',
+            partyDcNumber: st.linkedChallan?.partyDcNumber ?? '—',
+            vehicleNumber: st.linkedChallan?.vehicleNumber ?? '',
+            supplier: st.linkedChallan?.supplier?.name || 'Stock',
+            type: st.yarnName,
+            color: st.color,
+            bags: st.bags,
+            weight: st.netWeight,
+            netWeight: st.netWeight,
+            transferredWeight: 0,
+            transferredBags: 0,
+            availableWeight: st.netWeight,
+            status: 'Received',
+            remarks: st.remarks ?? '',
+            isUnassigned: true, // Assuming stock comes in unassigned to fabric item initially
+            fabricItemId: null,
+            customFabricItem: null,
+            dia: st.dia,
+            isFromStock: true
+        }));
+
+        yarnInwardLogs.push(...stockLogs);
+        
+        // Update global total to include stock received
+        const totalYarnReceivedFinal = totalYarnReceived + stockLogs.reduce((sum, st) => sum + st.netWeight, 0);
 
         // Flatten yarn return items into return rows
         const yarnReturns = jobCard.yarnReturns.flatMap((challan: any) =>
@@ -171,7 +227,7 @@ export class JobcardService {
                 supplier: challan.supplier?.name || 'Unknown',
                 type: item.yarnName,
                 bags: item.bags,
-                weight: `${item.netWeight.toFixed(2)} Kg`,
+                weight: item.netWeight,
                 netWeight: item.netWeight,
                 status: 'Returned',
                 remarks: challan.remarks ?? '',
@@ -230,7 +286,7 @@ export class JobcardService {
                 supplier: y.challan.supplier?.name || 'Unknown',
                 type: y.yarnName,
                 bags: y.bags,
-                weight: `${y.netWeight.toFixed(2)} Kg`,
+                weight: y.netWeight,
                 status: 'Received',
                 remarks: y.challan.remarks ?? '',
                 dia: y.dia
@@ -299,7 +355,7 @@ export class JobcardService {
 
         return {
             ...jobCardData,
-            totalYarnReceived,
+            totalYarnReceived: totalYarnReceivedFinal,
             totalFabricDelivered,
             yarnInwardLogs,
             yarnReturns,
@@ -455,5 +511,24 @@ export class JobcardService {
             FROM "JobCard"`;
 
         return result;
+    }
+
+    async getAllActiveJobCards(clientName?: string) {
+        const whereClause: Prisma.JobCardWhereInput = { status: 'IN_PROGRESS' };
+        if (clientName) {
+            whereClause.customerName = clientName;
+        }
+
+        const jobCards = await this.prisma.jobCard.findMany({
+            where: whereClause,
+            include: { fabricItems: true }
+        });
+
+        return jobCards.map(jc => ({
+            id: jc.jobNumber,
+            jobId: jc.id,
+            customerName: jc.customerName,
+            quality: jc.fabricItems.map(f => f.quality).filter(Boolean).join(', ') || 'N/A'
+        }));
     }
 }

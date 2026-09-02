@@ -67,6 +67,7 @@ model YarnInwardChallan {
   jobCard       JobCard          @relation(fields: [jobCardId], references: [id])
   supplier      Supplier         @relation(fields: [supplierId], references: [id])
   items         YarnInwardItem[]
+  stockTransfers YarnStockLedger[]
 
   @@index([jobCardId])
   @@index([supplierId])
@@ -108,6 +109,8 @@ model JobCard {
   invoiceDate        DateTime?
   invoiceNumber      String?
   invoiceRates       Json?
+  clientId           String?
+  client             Client?             @relation(fields: [clientId], references: [id])
   deliveryChallans   DeliveryChallan[]
   fabricItems        FabricItem[]
   invoices           Invoice[]
@@ -115,8 +118,11 @@ model JobCard {
   productionLogs     ProductionLog[]
   yarnInwardChallans YarnInwardChallan[]
   yarnReturns        YarnReturn[]
+  stockTransfersIn   YarnStockLedger[]   @relation("StockTransferSource")
+  stockTransfersOut  YarnStockLedger[]   @relation("StockTransferTarget")
 
   @@index([createdAt(sort: Desc)])
+  @@index([clientId])
 }
 
 model Production {
@@ -205,6 +211,8 @@ model Client {
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  jobCards       JobCard[]
+  stockLedgers   YarnStockLedger[]
 
   @@index([name])
   @@index([isActive])
@@ -333,3 +341,36 @@ enum Shift {
   DAY
   NIGHT
 }
+
+enum StockTransferType {
+  IN
+  OUT
+}
+
+model YarnStockLedger {
+  id              String            @id @default(uuid())
+  type            StockTransferType
+  clientId        String
+  sourceJobCardId String?
+  targetJobCardId String?
+  linkedChallanId String?
+  yarnName        String
+  bags            Int
+  netWeight       Float
+  date            DateTime          @default(now())
+  remarks         String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  client          Client            @relation(fields: [clientId], references: [id])
+  sourceJobCard   JobCard?          @relation("StockTransferSource", fields: [sourceJobCardId], references: [id])
+  targetJobCard   JobCard?          @relation("StockTransferTarget", fields: [targetJobCardId], references: [id])
+  linkedChallan   YarnInwardChallan? @relation(fields: [linkedChallanId], references: [id])
+
+  @@index([clientId])
+  @@index([sourceJobCardId])
+  @@index([targetJobCardId])
+  @@index([linkedChallanId])
+  @@index([date])
+}
+

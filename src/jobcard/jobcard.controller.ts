@@ -36,6 +36,12 @@ export class JobcardController {
     }
 
     @UseGuards(JwtAuthGuard)
+    @Get('get-all-active-jobcards')
+    getAllActiveJobCards(@Query('clientName') clientName?: string) {
+        return this.jobcardService.getAllActiveJobCards(clientName);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post('generate-invoice/:jobNumber')
     generateInvoice(
         @Param('jobNumber') jobNumber: string,

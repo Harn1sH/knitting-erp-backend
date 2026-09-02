@@ -11,9 +11,10 @@ import { YarnInwardsModule } from './yarn-inwards/yarn-inwards.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { YarnReturnsModule } from './yarn-returns/yarn-returns.module';
 import { ProductionModule } from './production/production.module';
+import { StockModule } from './stock/stock.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule, YarnReturnsModule, ProductionModule],
+  imports: [PrismaModule, ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }), AuthModule, DashboardModule, JobcardModule, MasterModule, YarnInwardsModule, DeliveryModule, YarnReturnsModule, ProductionModule, StockModule],
   controllers: [AppController],
   providers: [AppService],
 })
