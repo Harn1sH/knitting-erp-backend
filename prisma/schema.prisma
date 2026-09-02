@@ -236,7 +236,6 @@ model FabricItem {
   id              String           @id @default(cuid())
   jobCardId       String
   gsm             String
-  dia             String?
   count           String
   composition     String
   quality         String
