@@ -1,40 +1,18 @@
-import { config } from 'dotenv';
-config();
-import { Pool } from 'pg';
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) throw new Error('DATABASE_URL is missing');
-
-const pool = new Pool({ connectionString });
+import { Client } from 'pg';
+const OLD_URL = "postgresql://postgres.tvijihejgsackqmvqytw:Ow8WGu5qFAQwPHYV@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres";
 
 async function main() {
-    console.log("Connecting...");
-    await pool.query('SELECT 1');
-    console.log("Connected.");
+    const client = new Client({ connectionString: OLD_URL });
+    await client.connect();
     
-    console.log("Testing simple query...");
-    let start = performance.now();
-    const res1 = await pool.query('SELECT * FROM "JobCard" LIMIT 10');
-    let end = performance.now();
-    console.log(`JobCard query took ${(end - start).toFixed(2)}ms`);
-
-    start = performance.now();
-    const res2 = await pool.query('SELECT * FROM "FabricItem" WHERE "jobCardId" = $1', [res1.rows[0]?.id || '123']);
-    end = performance.now();
-    console.log(`FabricItem query took ${(end - start).toFixed(2)}ms`);
+    const res = await client.query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name != '_prisma_migrations';
+    `);
     
-    start = performance.now();
-    const [a, b] = await Promise.all([
-        pool.query('SELECT * FROM "JobCard" LIMIT 10'),
-        pool.query('SELECT COUNT(*) FROM "JobCard"')
-    ]);
-    end = performance.now();
-    console.log(`Parallel query took ${(end - start).toFixed(2)}ms`);
-
-    await pool.end();
+    console.log(res.rows.map(r => r.table_name));
+    await client.end();
 }
 
-main().catch(e => {
-    console.error(e);
-    process.exit(1);
-});
+main().catch(console.error);

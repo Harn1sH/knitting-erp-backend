@@ -484,7 +484,6 @@ export class JobcardService {
                 ...job,
                 gsm: job.fabricItems.map(f => f.gsm).filter(Boolean).join(', '),
                 orderQuantity: job.fabricItems.reduce((acc, f) => acc + (f.orderQuantity || 0), 0),
-                dia: job.fabricItems.map(f => f.dia).filter(Boolean).join(', '),
                 composition: job.fabricItems.map(f => f.composition).filter(Boolean).join(', '),
                 count: job.fabricItems.map(f => f.count).filter(Boolean).join(', '),
                 rate: job.fabricItems.reduce((acc, f) => acc + (f.rate || 0), 0),
