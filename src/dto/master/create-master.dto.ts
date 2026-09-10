@@ -5,9 +5,11 @@ export class CreateMasterDto {
     name: string;
 
     @IsEmail()
+    @IsOptional()
     email: string
 
     @IsString()
+    @IsOptional()
     phoneNumber: string
 
     @IsString()
