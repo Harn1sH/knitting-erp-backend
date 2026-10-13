@@ -54,6 +54,8 @@ export class JobcardService {
                             orderQuantity: item.orderQuantity,
                             gg: item.gg,
                             ll: item.ll,
+                            fabricType: item.fabricType || null,
+                            fabricConstruction: item.fabricConstruction || null,
                         }))
                     }
                 },
@@ -329,6 +331,8 @@ export class JobcardService {
                 mill: item.mill,
                 gg: item.gg,
                 ll: item.ll,
+                fabricType: item.fabricType,
+                fabricConstruction: item.fabricConstruction,
                 orderQuantity: item.orderQuantity,
                 rate: item.rate,
                 totalYarnReceived,

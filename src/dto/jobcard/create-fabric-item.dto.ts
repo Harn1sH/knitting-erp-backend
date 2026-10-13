@@ -1,6 +1,14 @@
-import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min, IsOptional } from 'class-validator';
 
 export class CreateFabricItemDto {
+  @IsOptional()
+  @IsString()
+  fabricType?: string;
+
+  @IsOptional()
+  @IsString()
+  fabricConstruction?: string;
+
   @IsString()
   @IsNotEmpty()
   gsm: string;

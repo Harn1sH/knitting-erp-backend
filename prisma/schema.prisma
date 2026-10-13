@@ -245,6 +245,8 @@ model FabricItem {
   createdAt       DateTime         @default(now())
   gg              Float            @default(0)
   ll              Float            @default(0)
+  fabricType      String?
+  fabricConstruction String?
   deliveryItems   DeliveryItem[]
   jobCard         JobCard          @relation(fields: [jobCardId], references: [id])
   yarnInwardItems YarnInwardItem[]

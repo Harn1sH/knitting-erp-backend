@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "DeliveryItem" ADD COLUMN "gg" DOUBLE PRECISION,
+ADD COLUMN "ll" DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "FabricItem" DROP COLUMN "dia";

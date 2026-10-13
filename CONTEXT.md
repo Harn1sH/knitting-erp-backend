@@ -23,3 +23,11 @@ _Avoid_: Inventory, Warehouse
 **Stock Transfer**:
 An immutable ledger record moving a quantity of yarn either from a Job Card to Stock, or from Stock to a Job Card.
 _Avoid_: Movement, Split
+
+**Fabric Construction**:
+The physical circular structure of the knitted fabric output, categorized as either Tubular or No Drop.
+_Avoid_: Finish, Structure, Form
+
+**Fabric Type**:
+The knit stitch architecture (e.g., Single Jersey, Rib, Fleece) selected from the master catalog.
+_Avoid_: Knit Pattern, Cloth Type
