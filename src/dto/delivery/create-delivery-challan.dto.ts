@@ -1,5 +1,5 @@
 import { Type } from "class-transformer"
-import { IsArray, IsDate, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
+import { IsArray, IsDate, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator"
 
 export class DeliveryItemDto {
     @IsOptional()
@@ -23,6 +23,10 @@ export class DeliveryItemDto {
     @IsString()
     fabricType?: string
 
+    @IsOptional()
+    @IsString()
+    fabricConstruction?: string
+
     @IsString()
     dia: string
 
@@ -45,6 +49,7 @@ export class CreateDeliveryChallanDto {
     jobCardId: string
 
     @IsString()
+    @IsNotEmpty()
     vehicle: string
 
     @IsOptional()

@@ -76,6 +76,27 @@ export class DeliveryService {
                     },
                 });
                 const unassignedYarn = unassignedYarnTotal._sum.netWeight ?? 0;
+                const [productionAgg, totalDeliveredAgg] = await Promise.all([
+                    tx.productionLog.aggregate({
+                        where: { jobCardId: jobCard.id },
+                        _sum: { weight: true },
+                    }),
+                    tx.deliveryItem.aggregate({
+                        where: { challan: { jobCardId: jobCard.id } },
+                        _sum: { quantityKg: true },
+                    }),
+                ]);
+
+                const totalProductionWeight = productionAgg._sum.weight || 0;
+                const totalDeliveredSoFar = totalDeliveredAgg._sum.quantityKg || 0;
+                const newDispatchTotal = dto.items.reduce((sum, item) => sum + (Number(item.quantityKg) || 0), 0);
+                const availableProduced = Math.max(0, Math.round((totalProductionWeight - totalDeliveredSoFar) * 100) / 100);
+
+                if (totalDeliveredSoFar + newDispatchTotal > totalProductionWeight) {
+                    throw new BadRequestException(
+                        `Cannot dispatch more than the total produced fabric (${totalProductionWeight.toFixed(2)} kg). Already delivered: ${totalDeliveredSoFar.toFixed(2)} kg, Available: ${availableProduced.toFixed(2)} kg, Attempted: ${newDispatchTotal.toFixed(2)} kg.`,
+                    );
+                }
 
                 const accumulatedDelivery = new Map<string, number>();
 
@@ -136,6 +157,7 @@ export class DeliveryService {
                                 numberOfRolls: item.numberOfRolls ?? null,
                                 fabricName: item.fabricName ?? null,
                                 fabricType: item.fabricType ?? null,
+                                fabricConstruction: item.fabricConstruction ?? null,
                                 dia: item.dia ?? null,
                                 gg: item.gg ?? null,
                                 ll: item.ll ?? null,

@@ -14,6 +14,10 @@ export class CreateJobCardDto {
     @IsString()
     remarks: string
 
+    @IsString()
+    @IsOptional()
+    dia?: string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => CreateFabricItemDto)

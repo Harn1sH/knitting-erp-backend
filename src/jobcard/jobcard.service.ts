@@ -43,6 +43,7 @@ export class JobcardService {
                     brand: jobCardData.brand,
                     machineNote: jobCardData.machineNote,
                     jobNumber,
+                    dia: jobCardData.dia || null,
                     fabricItems: {
                         create: jobCardData.fabricItems.map(item => ({
                             gsm: item.gsm,
@@ -96,7 +97,7 @@ export class JobcardService {
             throw new NotFoundException("No Job Card Found");
         }
 
-        const [client, yarnSum, deliverySum, stockOutSum] = await Promise.all([
+        const [client, yarnSum, deliverySum, stockOutSum, productionSum] = await Promise.all([
             this.prisma.client.findFirst({
                 where: { name: jobCardData.customerName }
             }),
@@ -111,11 +112,16 @@ export class JobcardService {
             this.prisma.yarnStockLedger.aggregate({
                 where: { targetJobCardId: jobCardData.id, type: 'OUT' },
                 _sum: { netWeight: true }
+            }),
+            this.prisma.productionLog.aggregate({
+                where: { jobCardId: jobCardData.id },
+                _sum: { weight: true }
             })
         ]);
 
         const totalYarnReceived = (yarnSum._sum.netWeight || 0) + (stockOutSum._sum.netWeight || 0);
         const totalFabricDelivered = deliverySum._sum.quantityKg || 0;
+        const totalProductionWeight = productionSum._sum.weight || 0;
 
         const fabricItemSummaries = jobCardData.fabricItems.map(item => ({
             id: item.id,
@@ -124,6 +130,7 @@ export class JobcardService {
             composition: item.composition,
             quality: item.quality,
             mill: item.mill,
+            dia: jobCardData.dia,
             gg: item.gg,
             ll: item.ll,
             fabricType: item.fabricType,
@@ -153,10 +160,11 @@ export class JobcardService {
             ...jobCardData,
             totalYarnReceived,
             totalFabricDelivered,
+            totalProductionWeight,
             yarnInwardLogs: [],
             yarnReturns: [],
             dispatchRecords: [],
-            fabricItems: jobCardData.fabricItems,
+            fabricItems: jobCardData.fabricItems.map(f => ({ ...f, dia: jobCardData.dia })),
             fabricItemSummaries,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
@@ -169,7 +177,7 @@ export class JobcardService {
     async getYarnLogs(jobNumber: string) {
         const jobCard = await this.prisma.jobCard.findUnique({
             where: { jobNumber },
-            select: { id: true, fabricItems: true }
+            select: { id: true, dia: true, fabricItems: true }
         });
 
         if (!jobCard) {
@@ -300,6 +308,7 @@ export class JobcardService {
 
             return {
                 id: item.id,
+                dia: jobCard.dia,
                 totalYarnReceived: totalItemYarnReceived,
                 lastSupplierId,
                 lastSupplierName,
@@ -317,17 +326,24 @@ export class JobcardService {
     async getDispatchRecords(jobNumber: string) {
         const jobCard = await this.prisma.jobCard.findUnique({
             where: { jobNumber },
-            select: { id: true, fabricItems: true }
+            select: { id: true, dia: true, fabricItems: true }
         });
 
         if (!jobCard) {
             throw new NotFoundException("No Job Card Found");
         }
 
-        const deliveryChallans = await this.prisma.deliveryChallan.findMany({
-            where: { jobCardId: jobCard.id },
-            include: { items: true }
-        });
+        const [deliveryChallans, productionAgg] = await Promise.all([
+            this.prisma.deliveryChallan.findMany({
+                where: { jobCardId: jobCard.id },
+                include: { items: true }
+            }),
+            this.prisma.productionLog.aggregate({
+                where: { jobCardId: jobCard.id },
+                _sum: { weight: true }
+            })
+        ]);
+        const totalProductionWeight = productionAgg._sum.weight || 0;
 
         const deliveryItemsByFabric = new Map<string, any[]>();
         for (const challan of deliveryChallans) {
@@ -365,10 +381,11 @@ export class JobcardService {
                     vehicle: challan.vehicle,
                     rolls: item.rolls,
                     status: 'Dispatched',
-                    dia: item.dia,
+                    dia: item.dia || jobCard.dia || null,
                     gg: item.gg,
                     ll: item.ll,
                     fabricType: item.fabricType,
+                    fabricConstruction: relatedFabricItem?.fabricConstruction ?? null,
                     fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown')
                 };
             })
@@ -395,16 +412,18 @@ export class JobcardService {
                     vehicle: d.challan.vehicle,
                     rolls: d.rolls,
                     status: 'Dispatched',
-                    dia: d.dia ?? null,
+                    dia: d.dia ?? jobCard.dia ?? null,
                     gg: d.gg,
                     ll: d.ll,
                     fabricType: d.fabricType,
+                    fabricConstruction: item.fabricConstruction ?? null,
                     fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`
                 };
             });
 
             return {
                 id: item.id,
+                dia: jobCard.dia,
                 totalFabricDelivered: totalItemFabricDelivered,
                 remainingDelivery: Math.round(Math.max(0, item.orderQuantity - totalItemFabricDelivered) * 1000) / 1000,
                 deliveryPercent: Math.round(Math.min(100, item.orderQuantity ? (totalItemFabricDelivered / item.orderQuantity) * 100 : 0) * 10) / 10,
@@ -415,6 +434,7 @@ export class JobcardService {
         return {
             dispatchRecords,
             totalFabricDelivered,
+            totalProductionWeight,
             fabricItemSummaries
         };
     }
@@ -429,10 +449,17 @@ export class JobcardService {
             throw new NotFoundException("No Job Card Found");
         }
 
-        const yarnReturnsData = await this.prisma.yarnReturn.findMany({
-            where: { jobCardId: jobCard.id },
-            include: { supplier: true, items: true }
-        });
+        const [yarnReturnsData, yarnInwardChallans] = await Promise.all([
+            this.prisma.yarnReturn.findMany({
+                where: { jobCardId: jobCard.id },
+                include: { supplier: true, items: true }
+            }),
+            this.prisma.yarnInwardChallan.findMany({
+                where: { jobCardId: jobCard.id },
+                include: { supplier: true, items: true },
+                orderBy: { entryDate: 'asc' }
+            })
+        ]);
 
         const yarnReturns = yarnReturnsData.flatMap((challan: any) =>
             challan.items.map((item: any) => ({
@@ -451,7 +478,29 @@ export class JobcardService {
             }))
         );
 
-        return { yarnReturns };
+        const yarnInwardLogs = yarnInwardChallans.flatMap((challan: any) =>
+            challan.items.map((item: any) => ({
+                id: item.id,
+                challanId: challan.id,
+                date: new Date(challan.entryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                grnNo: challan.grnNo,
+                partyDcNumber: challan.partyDcNumber ?? '—',
+                vehicleNumber: challan.vehicleNumber ?? '',
+                supplier: challan.supplier?.name || 'Unknown',
+                supplierId: challan.supplierId,
+                type: item.yarnName || item.customFabricItem || 'Fabric Item',
+                bags: item.bags,
+                weight: item.netWeight,
+                netWeight: item.netWeight,
+                status: 'Received',
+                remarks: challan.remarks ?? '',
+                fabricItemId: item.fabricItemId,
+                customFabricItem: item.customFabricItem || null,
+                dia: item.dia
+            }))
+        );
+
+        return { yarnReturns, yarnInwardLogs };
     }
 
     async getFullJobCard(jobNumber: string) {
@@ -466,7 +515,7 @@ export class JobcardService {
 
         const jobId = jobCardData.id;
 
-        const [client, yarnInwardChallans, yarnReturnsData, deliveryChallans, stockTransfersIn, stockTransfersOut] = await Promise.all([
+        const [client, yarnInwardChallans, yarnReturnsData, deliveryChallans, stockTransfersIn, stockTransfersOut, productionSum] = await Promise.all([
             this.prisma.client.findFirst({
                 where: { name: jobCardData.customerName }
             }),
@@ -490,8 +539,13 @@ export class JobcardService {
                 include: {
                     linkedChallan: { include: { supplier: true } }
                 }
+            }),
+            this.prisma.productionLog.aggregate({
+                where: { jobCardId: jobId },
+                _sum: { weight: true }
             })
         ]);
+        const totalProductionWeight = productionSum._sum.weight || 0;
 
         const yarnItemsByFabric = new Map<string, any[]>();
         const deliveryItemsByFabric = new Map<string, any[]>();
@@ -632,6 +686,7 @@ export class JobcardService {
                     gg: item.gg,
                     ll: item.ll,
                     fabricType: item.fabricType,
+                    fabricConstruction: relatedFabricItem?.fabricConstruction ?? null,
                     fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown')
                 };
             })
@@ -677,10 +732,11 @@ export class JobcardService {
                     vehicle: d.challan.vehicle,
                     rolls: d.rolls,
                     status: 'Dispatched',
-                    dia: d.dia ?? null,
+                    dia: d.dia ?? jobCardData.dia ?? null,
                     gg: d.gg,
                     ll: d.ll,
                     fabricType: d.fabricType,
+                    fabricConstruction: item.fabricConstruction ?? null,
                     fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`
                 };
             });
@@ -696,6 +752,7 @@ export class JobcardService {
                 composition: item.composition,
                 quality: item.quality,
                 mill: item.mill,
+                dia: jobCardData.dia,
                 gg: item.gg,
                 ll: item.ll,
                 fabricType: item.fabricType,
@@ -726,10 +783,11 @@ export class JobcardService {
             ...jobCardData,
             totalYarnReceived: totalYarnReceivedFinal,
             totalFabricDelivered,
+            totalProductionWeight,
             yarnInwardLogs,
             yarnReturns,
             dispatchRecords,
-            fabricItems: jobCardData.fabricItems,
+            fabricItems: jobCardData.fabricItems.map(f => ({ ...f, dia: jobCardData.dia })),
             fabricItemSummaries,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
@@ -874,11 +932,86 @@ export class JobcardService {
     async getAllActiveJobCardNames() {
 
         const result = await this.prisma.$queryRaw<
-            { value: string }[]
-        >`SELECT "jobNumber" || ' ' || "customerName" AS value
-            FROM "JobCard"`;
+            { id: string; value: string }[]
+        >`SELECT "id", "jobNumber" || ' ' || "customerName" AS value
+            FROM "JobCard" WHERE status = 'IN_PROGRESS'`;
 
         return result;
+    }
+
+    async getActiveJobCardsByDia(dia: string) {
+        if (!dia) return [];
+
+        const jobCards = await this.prisma.jobCard.findMany({
+            where: {
+                status: 'IN_PROGRESS',
+                dia: dia,
+            },
+            include: {
+                fabricItems: true,
+                productionLogs: {
+                    select: {
+                        weight: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+
+        return jobCards.map(jc => {
+            const firstFabric = jc.fabricItems[0] || null;
+            const totalProductionWeight = jc.productionLogs.reduce((sum, log) => sum + (log.weight || 0), 0);
+
+            return {
+                id: jc.id,
+                jobNumber: jc.jobNumber,
+                customerName: jc.customerName,
+                dia: jc.dia,
+                fabricItem: firstFabric ? {
+                    id: firstFabric.id,
+                    fabricType: firstFabric.fabricType,
+                    orderQuantity: firstFabric.orderQuantity,
+                } : null,
+                totalProductionWeight: Math.round(totalProductionWeight * 100) / 100,
+            };
+        });
+    }
+
+    async getJobCardById(id: string) {
+        const jobCard = await this.prisma.jobCard.findUnique({
+            where: { id },
+            include: {
+                fabricItems: true,
+                productionLogs: {
+                    select: {
+                        id: true,
+                        weight: true,
+                    },
+                },
+            },
+        });
+
+        if (!jobCard) {
+            throw new NotFoundException("Job Card not found");
+        }
+
+        const firstFabric = jobCard.fabricItems[0] || null;
+        const totalProductionWeight = jobCard.productionLogs.reduce((sum, log) => sum + (log.weight || 0), 0);
+
+        return {
+            id: jobCard.id,
+            jobNumber: jobCard.jobNumber,
+            customerName: jobCard.customerName,
+            dia: jobCard.dia,
+            fabricItem: firstFabric ? {
+                id: firstFabric.id,
+                fabricType: firstFabric.fabricType,
+                orderQuantity: firstFabric.orderQuantity,
+            } : null,
+            totalProductionWeight: Math.round(totalProductionWeight * 100) / 100,
+        };
     }
 
     async getAllActiveJobCards(clientName?: string) {

@@ -5,6 +5,8 @@ import { UpdateEmployeeDto } from '../dto/production/update-employee.dto';
 import { CreateProductionLogDto } from '../dto/production/create-production-log.dto';
 import { UpdateProductionLogDto } from '../dto/production/update-production-log.dto';
 import { JwtAuthGuard } from '../auth/jwt.guard';
+import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles/roles.decorator';
 
 @UseGuards(JwtAuthGuard)
 @Controller('production')
@@ -45,11 +47,15 @@ export class ProductionController {
         return this.productionService.getLogs(startDate, endDate, employeeId, jobCardId);
     }
 
+    @UseGuards(RolesGuard)
+    @Roles('ADMIN')
     @Patch("logs/:id")
     updateLog(@Param('id') id: string, @Body() body: UpdateProductionLogDto) {
         return this.productionService.updateLog(id, body);
     }
 
+    @UseGuards(RolesGuard)
+    @Roles('ADMIN')
     @Delete("logs/:id")
     deleteLog(@Param('id') id: string) {
         return this.productionService.deleteLog(id);

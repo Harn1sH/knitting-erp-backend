@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, HttpException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEmployeeDto } from '../dto/production/create-employee.dto';
 import { UpdateEmployeeDto } from '../dto/production/update-employee.dto';
@@ -48,6 +48,29 @@ export class ProductionService {
 
     async createLog(body: CreateProductionLogDto) {
         try {
+            if (body.jobCardId) {
+                const jobCard = await this.prisma.jobCard.findUnique({
+                    where: { id: body.jobCardId },
+                    include: { fabricItems: true },
+                });
+
+                if (jobCard && jobCard.fabricItems.length > 0) {
+                    const orderQuantity = jobCard.fabricItems.reduce((acc, f) => acc + (f.orderQuantity || 0), 0);
+                    const existingAgg = await this.prisma.productionLog.aggregate({
+                        where: { jobCardId: body.jobCardId },
+                        _sum: { weight: true },
+                    });
+                    const existingWeight = existingAgg._sum.weight || 0;
+                    const maxAllowed = orderQuantity + 5;
+
+                    if (existingWeight + body.weight > maxAllowed) {
+                        throw new BadRequestException(
+                            `Weight limit exceeded. Order Quantity: ${orderQuantity} kg, Max Allowed: ${maxAllowed} kg (Order + 5kg), Already Produced: ${existingWeight.toFixed(2)} kg, Attempted: ${body.weight} kg`
+                        );
+                    }
+                }
+            }
+
             const log = await this.prisma.productionLog.create({
                 data: {
                     ...body,
@@ -56,6 +79,9 @@ export class ProductionService {
             });
             return { status: 200, message: "Production log created successfully", data: log };
         } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
             console.error("Error creating production log:", error);
             return { status: 400, message: "Failed to create production log" };
         }
@@ -90,7 +116,45 @@ export class ProductionService {
 
     async updateLog(id: string, body: UpdateProductionLogDto) {
         try {
-            const dataToUpdate: any = { ...body };
+            const existingLog = await this.prisma.productionLog.findUnique({
+                where: { id },
+            });
+            if (!existingLog) {
+                throw new NotFoundException("Production log not found");
+            }
+
+            const targetJobCardId = existingLog.jobCardId;
+            const newWeight = body.weight !== undefined ? body.weight : existingLog.weight;
+
+            if (targetJobCardId && body.weight !== undefined) {
+                const jobCard = await this.prisma.jobCard.findUnique({
+                    where: { id: targetJobCardId },
+                    include: { fabricItems: true },
+                });
+
+                if (jobCard && jobCard.fabricItems.length > 0) {
+                    const orderQuantity = jobCard.fabricItems.reduce((acc, f) => acc + (f.orderQuantity || 0), 0);
+                    const otherLogsAgg = await this.prisma.productionLog.aggregate({
+                        where: {
+                            jobCardId: targetJobCardId,
+                            id: { not: id },
+                        },
+                        _sum: { weight: true },
+                    });
+                    const otherWeight = otherLogsAgg._sum.weight || 0;
+                    const maxAllowed = orderQuantity + 5;
+
+                    if (otherWeight + newWeight > maxAllowed) {
+                        throw new BadRequestException(
+                            `Weight limit exceeded. Order Quantity: ${orderQuantity} kg, Max Allowed: ${maxAllowed} kg (Order + 5kg), Already Produced (others): ${otherWeight.toFixed(2)} kg, Attempted: ${newWeight} kg`
+                        );
+                    }
+                }
+            }
+
+            // Keep dia, jobCardId, fabricType locked on edit
+            const { jobCardId, dia, fabricType, ...allowedFields } = body as any;
+            const dataToUpdate: any = { ...allowedFields };
             if (body.date) {
                 dataToUpdate.date = new Date(body.date);
             }
@@ -101,6 +165,10 @@ export class ProductionService {
             });
             return { status: 200, message: "Production log updated successfully", data: log };
         } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            console.error("Error updating production log:", error);
             return { status: 400, message: "Failed to update production log" };
         }
     }

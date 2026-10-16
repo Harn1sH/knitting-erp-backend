@@ -45,6 +45,7 @@ model DeliveryItem {
   rolls         Int
   dia           String?
   fabricType    String?
+  fabricConstruction String?
   gg            Float?
   ll            Float?
   challan       DeliveryChallan @relation(fields: [challanId], references: [id])
@@ -78,7 +79,7 @@ model YarnInwardItem {
   id               String            @id @default(uuid())
   challanId        String
   fabricItemId     String?
-  yarnName         String
+  yarnName         String?
   color            String?
   bags             Int
   netWeight        Float
@@ -110,6 +111,7 @@ model JobCard {
   invoiceNumber      String?
   invoiceRates       Json?
   clientId           String?
+  dia                String?
   client             Client?             @relation(fields: [clientId], references: [id])
   deliveryChallans   DeliveryChallan[]
   fabricItems        FabricItem[]

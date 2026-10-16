@@ -14,8 +14,9 @@ export class YarnInwardItemDto {
     @IsString()
     supplierId?: string
 
+    @IsOptional()
     @IsString()
-    yarnName: string
+    yarnName?: string
 
     @IsOptional()
     @IsString()

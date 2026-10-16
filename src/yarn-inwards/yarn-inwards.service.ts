@@ -100,7 +100,7 @@ export class YarnInwardsService {
                                 fabricItemId: item.fabricItemId ?? null,
                                 customFabricItem: item.customFabricItem ?? null,
                                 supplierId: item.supplierId ?? null,
-                                yarnName: item.yarnName,
+                                yarnName: item.yarnName ?? null,
                                 color: item.color ?? null,
                                 bags: item.bags,
                                 netWeight: item.netWeight,

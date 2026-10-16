@@ -25,14 +25,29 @@ export class JobcardController {
 
     @UseGuards(JwtAuthGuard)
     @Get('get-jobcard/:jobNumber')
-    getJobCard(@Param('jobNumber') jobNumber: string) {
-        return this.jobcardService.getJobCard(jobNumber);
+    getJobCard(
+        @Param('jobNumber') jobNumber: string,
+        @Query('tab') tab?: string
+    ) {
+        return this.jobcardService.getJobCard(jobNumber, tab);
     }
 
     @UseGuards(JwtAuthGuard)
     @Get('get-all-active-jobcard-names')
     getAllActiveJobCardNames(){
         return this.jobcardService.getAllActiveJobCardNames();
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('get-active-jobcards-by-dia')
+    getActiveJobCardsByDia(@Query('dia') dia: string) {
+        return this.jobcardService.getActiveJobCardsByDia(dia);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('get-jobcard-by-id/:id')
+    getJobCardById(@Param('id') id: string) {
+        return this.jobcardService.getJobCardById(id);
     }
 
     @UseGuards(JwtAuthGuard)
