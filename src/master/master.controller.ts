@@ -56,8 +56,8 @@ export class MasterController {
     }
 
     @Get("get-master-entries")
-    getMasterEntries(@Query('category') category: string){
-        return this.masterService.getMasterEntries(category)
+    getMasterEntries(@Query('category') category: string, @Query('fabricType') fabricType?: string){
+        return this.masterService.getMasterEntries(category, fabricType)
     }
 
     @Patch("update-master-entry/:id")

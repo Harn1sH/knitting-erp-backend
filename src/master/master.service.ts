@@ -134,26 +134,35 @@ export class MasterService {
                 category: body.category,
                 name: body.name,
                 description: body.description,
+                fabricType: body.fabricType || null,
             }
         });
         return { message: "Created master entry successfully" };
     }
 
-    async getMasterEntries(category: string) {
+    async getMasterEntries(category: string, fabricType?: string) {
+        const where: any = { category };
+        if (fabricType) {
+            where.fabricType = fabricType;
+        }
         const entries = await this.prismaService.masterEntry.findMany({
-            where: { category },
+            where,
             orderBy: { name: 'asc' },
         });
         return { status: 200, data: entries };
     }
 
     async updateMasterEntry(id: string, body: UpdateMasterEntryDto) {
+        const data: any = {
+            name: body.name,
+            description: body.description,
+        };
+        if (body.fabricType !== undefined) {
+            data.fabricType = body.fabricType || null;
+        }
         await this.prismaService.masterEntry.update({
             where: { id },
-            data: {
-                name: body.name,
-                description: body.description,
-            }
+            data,
         });
         return { message: "Updated master entry successfully" };
     }

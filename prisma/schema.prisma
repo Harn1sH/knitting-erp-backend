@@ -225,6 +225,7 @@ model MasterEntry {
   category    String
   name        String
   description String?
+  fabricType  String?
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

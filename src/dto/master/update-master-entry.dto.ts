@@ -8,4 +8,8 @@ export class UpdateMasterEntryDto {
     @IsString()
     @IsOptional()
     description?: string;
+
+    @IsString()
+    @IsOptional()
+    fabricType?: string;
 }

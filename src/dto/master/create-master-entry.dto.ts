@@ -10,4 +10,8 @@ export class CreateMasterEntryDto {
     @IsString()
     @IsOptional()
     description?: string;
+
+    @IsString()
+    @IsOptional()
+    fabricType?: string;
 }
