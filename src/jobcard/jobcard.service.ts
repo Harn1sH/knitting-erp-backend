@@ -896,7 +896,21 @@ export class JobcardService {
         const jobCards = await this.prisma.jobCard.findMany({ 
             where,
             include: {
-                fabricItems: true
+                fabricItems: true,
+                productionLogs: {
+                    select: {
+                        weight: true,
+                    },
+                },
+                deliveryChallans: {
+                    select: {
+                        items: {
+                            select: {
+                                quantityKg: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
                 createdAt: 'desc'
@@ -908,6 +922,13 @@ export class JobcardService {
         const total = await this.prisma.jobCard.count({ where });
 
         const data = jobCards.map(job => {
+            const totalProductionWeight = job.productionLogs.reduce((sum, p) => sum + (p.weight || 0), 0);
+            const totalFabricDelivered = job.deliveryChallans.reduce(
+                (sum, dc) => sum + dc.items.reduce((s, item) => s + (item.quantityKg || 0), 0),
+                0,
+            );
+            const availableProduced = Math.max(0, Math.round((totalProductionWeight - totalFabricDelivered) * 100) / 100);
+
             return {
                 ...job,
                 gsm: job.fabricItems.map(f => f.gsm).filter(Boolean).join(', '),
@@ -916,6 +937,9 @@ export class JobcardService {
                 count: job.fabricItems.map(f => f.count).filter(Boolean).join(', '),
                 rate: job.fabricItems.reduce((acc, f) => acc + (f.rate || 0), 0),
                 machine: job.machine && job.brand ? `${job.machine} (${job.brand})` : (job.machine || job.brand || ''),
+                totalProductionWeight,
+                totalFabricDelivered,
+                availableProduced,
             };
         });
 
