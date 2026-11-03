@@ -70,6 +70,7 @@ export class JobcardService {
         return { message: "Job Card Created Successfully" }
     }
 
+
     async getJobCard(jobNumber: string, tab?: string) {
         if (tab === 'core') {
             return this.getJobCardCore(jobNumber);

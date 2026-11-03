@@ -13,6 +13,7 @@ export class JobcardController {
         return this.jobcardService.createJobCard(jobCardData);
     }
 
+
     @UseGuards(JwtAuthGuard)
     @Get('get-all-jobcards')
     getAllJobCards(
