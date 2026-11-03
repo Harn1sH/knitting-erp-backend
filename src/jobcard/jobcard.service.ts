@@ -168,6 +168,13 @@ export class JobcardService {
             fabricItemSummaries,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
+            clientDetails: client ? {
+                name: client.name,
+                address: [client.address, client.city, client.state, client.pincode].filter(Boolean).join(', '),
+                phoneNumber: client.phoneNumber || client.altPhoneNumber || '',
+                email: client.email || '',
+                gstNumber: client.gstNumber || '',
+            } : null,
             invoiceNumber: finalInvoiceNumber,
             invoiceDate: finalInvoiceDate,
             invoiceRates: finalRates as any
@@ -234,6 +241,13 @@ export class JobcardService {
                     partyDcNumber: challan.partyDcNumber ?? '—',
                     vehicleNumber: challan.vehicleNumber ?? '',
                     supplier: challan.supplier?.name || 'Unknown',
+                    supplierDetails: challan.supplier ? {
+                        name: challan.supplier.name,
+                        address: [challan.supplier.address, challan.supplier.city, challan.supplier.state, challan.supplier.pincode].filter(Boolean).join(', '),
+                        phoneNumber: challan.supplier.phoneNumber || challan.supplier.altPhoneNumber || '',
+                        email: challan.supplier.email || '',
+                        gstNumber: challan.supplier.gstNumber || '',
+                    } : null,
                     type: item.yarnName || item.customFabricItem || 'Fabric Item',
                     color: item.color,
                     bags: item.bags,
@@ -261,6 +275,13 @@ export class JobcardService {
             partyDcNumber: st.linkedChallan?.partyDcNumber ?? '—',
             vehicleNumber: st.linkedChallan?.vehicleNumber ?? '',
             supplier: st.linkedChallan?.supplier?.name || 'Stock',
+            supplierDetails: st.linkedChallan?.supplier ? {
+                name: st.linkedChallan.supplier.name,
+                address: [st.linkedChallan.supplier.address, st.linkedChallan.supplier.city, st.linkedChallan.supplier.state, st.linkedChallan.supplier.pincode].filter(Boolean).join(', '),
+                phoneNumber: st.linkedChallan.supplier.phoneNumber || st.linkedChallan.supplier.altPhoneNumber || '',
+                email: st.linkedChallan.supplier.email || '',
+                gstNumber: st.linkedChallan.supplier.gstNumber || '',
+            } : null,
             type: st.yarnName,
             color: st.color,
             bags: st.bags,
@@ -294,6 +315,13 @@ export class JobcardService {
                 partyDcNumber: y.challan.partyDcNumber ?? '—',
                 vehicleNumber: y.challan.vehicleNumber ?? '',
                 supplier: y.challan.supplier?.name || 'Unknown',
+                supplierDetails: y.challan.supplier ? {
+                    name: y.challan.supplier.name,
+                    address: [y.challan.supplier.address, y.challan.supplier.city, y.challan.supplier.state, y.challan.supplier.pincode].filter(Boolean).join(', '),
+                    phoneNumber: y.challan.supplier.phoneNumber || y.challan.supplier.altPhoneNumber || '',
+                    email: y.challan.supplier.email || '',
+                    gstNumber: y.challan.supplier.gstNumber || '',
+                } : null,
                 type: y.yarnName || y.customFabricItem || 'Fabric Item',
                 bags: y.bags,
                 weight: y.netWeight,
@@ -386,7 +414,8 @@ export class JobcardService {
                     ll: item.ll,
                     fabricType: item.fabricType,
                     fabricConstruction: relatedFabricItem?.fabricConstruction ?? null,
-                    fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown')
+                    fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown'),
+                    fabricItemId: item.fabricItemId || null
                 };
             })
         );
@@ -417,7 +446,8 @@ export class JobcardService {
                     ll: d.ll,
                     fabricType: d.fabricType,
                     fabricConstruction: item.fabricConstruction ?? null,
-                    fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`
+                    fabricName: d.fabricName || `${item.composition} / ${item.gsm} GSM`,
+                    fabricItemId: item.id
                 };
             });
 
@@ -468,6 +498,13 @@ export class JobcardService {
                 partyDcNumber: challan.partyDcNumber ?? '—',
                 vehicleNumber: challan.vehicleNumber ?? '',
                 supplier: challan.supplier?.name || 'Unknown',
+                supplierDetails: challan.supplier ? {
+                    name: challan.supplier.name,
+                    address: [challan.supplier.address, challan.supplier.city, challan.supplier.state, challan.supplier.pincode].filter(Boolean).join(', '),
+                    phoneNumber: challan.supplier.phoneNumber || challan.supplier.altPhoneNumber || '',
+                    email: challan.supplier.email || '',
+                    gstNumber: challan.supplier.gstNumber || '',
+                } : null,
                 type: item.yarnName,
                 bags: item.bags,
                 weight: item.netWeight,
@@ -487,6 +524,13 @@ export class JobcardService {
                 partyDcNumber: challan.partyDcNumber ?? '—',
                 vehicleNumber: challan.vehicleNumber ?? '',
                 supplier: challan.supplier?.name || 'Unknown',
+                supplierDetails: challan.supplier ? {
+                    name: challan.supplier.name,
+                    address: [challan.supplier.address, challan.supplier.city, challan.supplier.state, challan.supplier.pincode].filter(Boolean).join(', '),
+                    phoneNumber: challan.supplier.phoneNumber || challan.supplier.altPhoneNumber || '',
+                    email: challan.supplier.email || '',
+                    gstNumber: challan.supplier.gstNumber || '',
+                } : null,
                 supplierId: challan.supplierId,
                 type: item.yarnName || item.customFabricItem || 'Fabric Item',
                 bags: item.bags,
@@ -596,6 +640,13 @@ export class JobcardService {
                     partyDcNumber: challan.partyDcNumber ?? '—',
                     vehicleNumber: challan.vehicleNumber ?? '',
                     supplier: challan.supplier?.name || 'Unknown',
+                supplierDetails: challan.supplier ? {
+                    name: challan.supplier.name,
+                    address: [challan.supplier.address, challan.supplier.city, challan.supplier.state, challan.supplier.pincode].filter(Boolean).join(', '),
+                    phoneNumber: challan.supplier.phoneNumber || challan.supplier.altPhoneNumber || '',
+                    email: challan.supplier.email || '',
+                    gstNumber: challan.supplier.gstNumber || '',
+                } : null,
                     type: item.yarnName || item.customFabricItem || 'Fabric Item',
                     color: item.color,
                     bags: item.bags,
@@ -651,6 +702,13 @@ export class JobcardService {
                 partyDcNumber: challan.partyDcNumber ?? '—',
                 vehicleNumber: challan.vehicleNumber ?? '',
                 supplier: challan.supplier?.name || 'Unknown',
+                supplierDetails: challan.supplier ? {
+                    name: challan.supplier.name,
+                    address: [challan.supplier.address, challan.supplier.city, challan.supplier.state, challan.supplier.pincode].filter(Boolean).join(', '),
+                    phoneNumber: challan.supplier.phoneNumber || challan.supplier.altPhoneNumber || '',
+                    email: challan.supplier.email || '',
+                    gstNumber: challan.supplier.gstNumber || '',
+                } : null,
                 type: item.yarnName,
                 bags: item.bags,
                 weight: item.netWeight,
@@ -687,7 +745,8 @@ export class JobcardService {
                     ll: item.ll,
                     fabricType: item.fabricType,
                     fabricConstruction: relatedFabricItem?.fabricConstruction ?? null,
-                    fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown')
+                    fabricName: item.fabricName || (relatedFabricItem ? `${relatedFabricItem.composition} / ${relatedFabricItem.gsm} GSM` : 'Unknown'),
+                    fabricItemId: item.fabricItemId || null
                 };
             })
         );
@@ -791,6 +850,13 @@ export class JobcardService {
             fabricItemSummaries,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
+            clientDetails: client ? {
+                name: client.name,
+                address: [client.address, client.city, client.state, client.pincode].filter(Boolean).join(', '),
+                phoneNumber: client.phoneNumber || client.altPhoneNumber || '',
+                email: client.email || '',
+                gstNumber: client.gstNumber || '',
+            } : null,
             invoiceNumber: finalInvoiceNumber,
             invoiceDate: finalInvoiceDate,
             invoiceRates: finalRates as any
@@ -881,6 +947,13 @@ export class JobcardService {
             invoiceRates: finalRates as any,
             clientAddress: client?.address || '',
             clientGstNumber: client?.gstNumber || '',
+            clientDetails: client ? {
+                name: client.name,
+                address: [client.address, client.city, client.state, client.pincode].filter(Boolean).join(', '),
+                phoneNumber: client.phoneNumber || client.altPhoneNumber || '',
+                email: client.email || '',
+                gstNumber: client.gstNumber || '',
+            } : null,
         };
     }
 
